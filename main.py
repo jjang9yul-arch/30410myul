@@ -40,7 +40,7 @@ def main():
         - **상점 열기/닫기**: `B` 키 (산탄총 150G / 기관총 300G)
         - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4 키
         - **몬스터 디테일 업**: 디테일한 장갑과 빛나는 눈을 가진 디테일한 3D 적 모델 적용!
-        - **보스전**: **5라운드**마다 거대 타이탄 등장! (내려찍기 & 충격파 주의)
+        - **보스전**: **5라운드**마다 거대 타이탄 등장! (파동 → 파동 → 브레스 순서의 보스 공격 패턴 주의)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -262,7 +262,7 @@ def main():
             <div id="game-container">
                 <div id="hud">
                     라운드: <span id="round">1</span> | 
-                    체력: <span id="health" style="color: #00ffcc;">100</span> | 
+                    체력: <span id="health" style="color: #00ffcc;">150</span> | 
                     골드: <span id="money" style="color:#ffd700;">0</span>G | 
                     무기: <span id="weapon">권총</span> | 
                     탄약: <span id="ammo">12 / 12</span> | 
@@ -271,7 +271,7 @@ def main():
                 </div>
 
                 <div id="boss-hud">
-                    ⚠️ 보스 : <span id="boss-title">크로노스 타이탄</span>
+                    ⚠️ 보스 : <span id="boss-title">크로노스 타이탄</span> <span style="font-size:12px;color:#ff9ab5;">[파동 → 파동 → 브레스]</span>
                     <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
                 </div>
 
@@ -381,7 +381,7 @@ def main():
                     4: { name: '기관총', damage: 42, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 }
                 };
 
-                let round = 1, kills = 0, money = 0, playerHealth = 100;
+                let round = 1, kills = 0, money = 0, playerHealth = 150;
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
 
@@ -396,7 +396,7 @@ def main():
 
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], shockwaves = [], isGameActive = false, isShopOpen = false;
+                let enemies = [], shockwaves = [], breaths = [], isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
                 let bossEnemy = null;
 
@@ -621,8 +621,10 @@ def main():
                     
                     shockwaves.forEach(s => scene.remove(s.mesh));
                     shockwaves = [];
+                    breaths.forEach(b => scene.remove(b.mesh));
+                    breaths = [];
 
-                    playerHealth = 100;
+                    playerHealth = 150;
                     camera.position.set(0, PLAYER_HEIGHT, 40);
                     
                     document.getElementById('boss-hud').style.display = 'none';
@@ -696,37 +698,88 @@ def main():
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    // 1. 거대 중장갑 체구
-                    const torsoGeo = new THREE.ConeGeometry(2.8, 4.5, 8);
-                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x440011, metalness: 0.9, roughness: 0.1 });
+                    // 1. 거대하고 잘 보이는 보스 몸체 - 검정 대신 짙은 보라/붉은색
+                    const torsoGeo = new THREE.ConeGeometry(3.1, 4.8, 8);
+                    const armorMat = new THREE.MeshStandardMaterial({
+                        color: 0x5b0a78,
+                        metalness: 0.85,
+                        roughness: 0.22,
+                        emissive: 0x22002f,
+                        emissiveIntensity: 0.7
+                    });
                     const torso = new THREE.Mesh(torsoGeo, armorMat);
                     torso.rotation.x = Math.PI;
                     torso.position.y = 4.0;
                     group.add(torso);
 
-                    // 2. 육중한 거대 어깨 장갑
-                    const shoulderGeo = new THREE.BoxGeometry(5.2, 1.2, 2.2);
-                    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0xaa0033, metalness: 0.8 });
+                    // 2. 붉은 거대 어깨 장갑
+                    const shoulderGeo = new THREE.BoxGeometry(5.6, 1.3, 2.4);
+                    const shoulderMat = new THREE.MeshStandardMaterial({
+                        color: 0xb0003a,
+                        metalness: 0.8,
+                        roughness: 0.18,
+                        emissive: 0x3a0012,
+                        emissiveIntensity: 0.8
+                    });
                     const shoulder = new THREE.Mesh(shoulderGeo, shoulderMat);
                     shoulder.position.y = 5.6;
                     group.add(shoulder);
 
-                    // 3. 위압감 있는 다면체 투구
-                    const headGeo = new THREE.DodecahedronGeometry(1.0, 0);
-                    const headMat = new THREE.MeshStandardMaterial({ color: 0x220005, metalness: 0.95 });
+                    // 3. 위압적인 머리
+                    const headGeo = new THREE.DodecahedronGeometry(1.15, 1);
+                    const headMat = new THREE.MeshStandardMaterial({
+                        color: 0x35104d,
+                        metalness: 0.9,
+                        roughness: 0.15,
+                        emissive: 0x180021,
+                        emissiveIntensity: 0.6
+                    });
                     const head = new THREE.Mesh(headGeo, headMat);
-                    head.position.y = 6.8;
+                    head.position.y = 6.9;
                     group.add(head);
 
-                    // 4. 보스 거대 붉은 안광
-                    const eyeGeo = new THREE.BoxGeometry(1.2, 0.25, 0.3);
-                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+                    // 4. 거대한 붉은 안광
+                    const eyeGeo = new THREE.BoxGeometry(1.45, 0.3, 0.28);
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
                     const eye = new THREE.Mesh(eyeGeo, eyeMat);
-                    eye.position.set(0, 6.8, -0.9);
+                    eye.position.set(0, 6.9, -1.02);
                     group.add(eye);
 
-                    // 5. 보스 주위 발광 포인트
-                    const auraLight = new THREE.PointLight(0xff0044, 4, 20);
+                    // 5. 머리 위 뿔 2개
+                    const hornGeo = new THREE.ConeGeometry(0.42, 1.8, 6);
+                    const hornMat = new THREE.MeshStandardMaterial({
+                        color: 0xd8b4ff,
+                        metalness: 0.7,
+                        roughness: 0.25,
+                        emissive: 0x3a0055,
+                        emissiveIntensity: 0.5
+                    });
+                    const hornL = new THREE.Mesh(hornGeo, hornMat);
+                    const hornR = new THREE.Mesh(hornGeo, hornMat);
+                    hornL.position.set(-0.75, 8.0, 0);
+                    hornR.position.set(0.75, 8.0, 0);
+                    hornL.rotation.z = -0.3;
+                    hornR.rotation.z = 0.3;
+                    group.add(hornL, hornR);
+
+                    // 6. 가슴 중앙의 발광 코어
+                    const coreGeo = new THREE.OctahedronGeometry(0.6, 0);
+                    const coreMat = new THREE.MeshBasicMaterial({ color: 0xff003c });
+                    const core = new THREE.Mesh(coreGeo, coreMat);
+                    core.position.set(0, 4.0, -2.7);
+                    group.add(core);
+
+                    // 7. 등 뒤에 떠 있는 어둠의 구체
+                    const orbGeo = new THREE.SphereGeometry(0.35, 16, 16);
+                    const orbMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+                    for (let i = 0; i < 5; i++) {
+                        const orb = new THREE.Mesh(orbGeo, orbMat);
+                        const a = (i / 5) * Math.PI * 2;
+                        orb.position.set(Math.cos(a) * 3.2, 4.5 + Math.sin(a) * 1.8, 1.0);
+                        group.add(orb);
+                    }
+
+                    const auraLight = new THREE.PointLight(0xff0044, 6, 28);
                     auraLight.position.set(0, 5, 0);
                     group.add(auraLight);
 
@@ -741,9 +794,12 @@ def main():
                         speed: 4.5,
                         damage: 25,
                         lastAttack: 0,
-                        lastSlam: performance.now(),
+                        nextBossAttack: performance.now() + 2500,
+                        attackStep: 0, // 0=첫 파동, 1=두 번째 파동, 2=브레스
                         isSlamming: false,
                         slamPhase: 0,
+                        isBreathing: false,
+                        breathStart: 0,
                         isBoss: true
                     };
 
@@ -765,6 +821,57 @@ def main():
                         speed: 22.0,
                         originX: x,
                         originZ: z,
+                        hasHitPlayer: false
+                    });
+
+                    playGunSound('slam');
+                }
+
+                function createBreath(boss) {
+                    if (!boss || !boss.mesh) return;
+                    const origin = boss.mesh.position.clone();
+                    origin.y = 4.8;
+                    const target = camera.position.clone();
+                    const dir = new THREE.Vector3().subVectors(target, origin);
+                    const length = Math.min(Math.max(dir.length(), 10), 32);
+                    dir.normalize();
+
+                    // 길게 뻗는 보라/붉은 브레스
+                    const geo = new THREE.ConeGeometry(2.8, length, 24, 1, true);
+                    const mat = new THREE.MeshBasicMaterial({
+                        color: 0xff1744,
+                        transparent: true,
+                        opacity: 0.55,
+                        side: THREE.DoubleSide,
+                        depthWrite: false
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.copy(origin).addScaledVector(dir, length / 2);
+                    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                    scene.add(mesh);
+
+                    // 브레스 중심의 밝은 에너지 코어
+                    const coreGeo = new THREE.CylinderGeometry(0.45, 1.1, length, 16, 1, true);
+                    const coreMat = new THREE.MeshBasicMaterial({
+                        color: 0xffd1e0,
+                        transparent: true,
+                        opacity: 0.45,
+                        side: THREE.DoubleSide,
+                        depthWrite: false
+                    });
+                    const core = new THREE.Mesh(coreGeo, coreMat);
+                    core.position.copy(mesh.position);
+                    core.quaternion.copy(mesh.quaternion);
+                    scene.add(core);
+
+                    breaths.push({
+                        mesh: mesh,
+                        core: core,
+                        origin: origin,
+                        dir: dir,
+                        length: length,
+                        start: performance.now(),
+                        duration: 1400,
                         hasHitPlayer: false
                     });
 
@@ -910,12 +1017,13 @@ def main():
                     }
 
                     const healthElem = document.getElementById('health');
-                    if (playerHealth < 30) healthElem.style.color = '#ff3333';
-                    else if (playerHealth < 60) healthElem.style.color = '#ffaa00';
+                    if (playerHealth < 45) healthElem.style.color = '#ff3333';
+                    else if (playerHealth < 90) healthElem.style.color = '#ffaa00';
                     else healthElem.style.color = '#00ffcc';
                 }
 
                 function endGame(victory) {
+                    if (!isGameActive) return;
                     isGameActive = false;
                     isRoundCleared = victory;
                     gameOverScreen.style.display = 'block';
@@ -925,6 +1033,8 @@ def main():
                     const btn = document.getElementById('game-over-btn');
 
                     if (victory) {
+                        money += 50; // 라운드 클리어 보너스
+                        updateHUD();
                         title.innerText = `라운드 ${round} 승리!`;
                         title.style.color = '#00ffcc';
                         desc.innerText = round % 5 === 0 ? '보스를 물리쳤습니다!' : '적을 모두 제압했습니다!';
@@ -990,25 +1100,38 @@ def main():
                             const enemyPos = enemy.mesh.position;
 
                             if (enemy.isBoss) {
-                                if (!enemy.isSlamming && time - enemy.lastSlam > 5000) {
-                                    enemy.isSlamming = true;
-                                    enemy.slamPhase = 1;
-                                    enemy.lastSlam = time;
+                                // 보스 공격 패턴: 파동 → 파동 → 브레스 → 반복
+                                if (!enemy.isSlamming && !enemy.isBreathing && time >= enemy.nextBossAttack) {
+                                    if (enemy.attackStep < 2) {
+                                        enemy.isSlamming = true;
+                                        enemy.slamPhase = 1;
+                                    } else {
+                                        enemy.isBreathing = true;
+                                        enemy.breathStart = time;
+                                        createBreath(enemy);
+                                    }
+                                    enemy.nextBossAttack = time + 3200;
                                 }
 
                                 if (enemy.isSlamming) {
                                     if (enemy.slamPhase === 1) {
                                         enemyPos.y += 18 * delta;
-                                        if (enemyPos.y >= 8.0) {
-                                            enemy.slamPhase = 2;
-                                        }
+                                        if (enemyPos.y >= 8.0) enemy.slamPhase = 2;
                                     } else if (enemy.slamPhase === 2) {
                                         enemyPos.y -= 40 * delta;
                                         if (enemyPos.y <= 0) {
                                             enemyPos.y = 0;
                                             enemy.isSlamming = false;
                                             createShockwave(enemyPos.x, enemyPos.z);
+                                            enemy.attackStep++;
+                                            enemy.nextBossAttack = time + 2200;
                                         }
+                                    }
+                                } else if (enemy.isBreathing) {
+                                    if (time - enemy.breathStart >= 1400) {
+                                        enemy.isBreathing = false;
+                                        enemy.attackStep = 0;
+                                        enemy.nextBossAttack = time + 3000;
                                     }
                                 } else {
                                     const dist = enemyPos.distanceTo(playerPos);
@@ -1017,13 +1140,11 @@ def main():
                                         enemyPos.x += dir.x * enemy.speed * delta;
                                         enemyPos.z += dir.z * enemy.speed * delta;
                                         enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-                                    } else {
-                                        if (time - enemy.lastAttack > 800) {
-                                            playerHealth -= enemy.damage;
-                                            enemy.lastAttack = time;
-                                            updateHUD();
-                                            if (playerHealth <= 0) endGame(false);
-                                        }
+                                    } else if (time - enemy.lastAttack > 800) {
+                                        playerHealth -= enemy.damage;
+                                        enemy.lastAttack = time;
+                                        updateHUD();
+                                        if (playerHealth <= 0) endGame(false);
                                     }
                                 }
                             } else {
@@ -1063,6 +1184,37 @@ def main():
                             if (wave.radius >= wave.maxRadius) {
                                 scene.remove(wave.mesh);
                                 shockwaves.splice(i, 1);
+                            }
+                        }
+
+                        // 보스 브레스 판정 및 페이드 아웃
+                        for (let i = breaths.length - 1; i >= 0; i--) {
+                            const breath = breaths[i];
+                            const elapsed = time - breath.start;
+                            const progress = Math.min(1, elapsed / breath.duration);
+                            breath.mesh.material.opacity = 0.55 * (1 - progress * 0.35);
+                            breath.core.material.opacity = 0.45 * (1 - progress * 0.45);
+
+                            // 플레이어가 브레스 직선과 가까우면 피해
+                            if (!breath.hasHitPlayer) {
+                                const toPlayer = new THREE.Vector3().subVectors(playerPos, breath.origin);
+                                const along = toPlayer.dot(breath.dir);
+                                if (along > 0 && along < breath.length) {
+                                    const closest = breath.origin.clone().addScaledVector(breath.dir, along);
+                                    const distanceFromBeam = playerPos.distanceTo(closest);
+                                    if (distanceFromBeam < 2.8) {
+                                        playerHealth -= 45;
+                                        breath.hasHitPlayer = true;
+                                        updateHUD();
+                                        if (playerHealth <= 0) endGame(false);
+                                    }
+                                }
+                            }
+
+                            if (elapsed >= breath.duration) {
+                                scene.remove(breath.mesh);
+                                scene.remove(breath.core);
+                                breaths.splice(i, 1);
                             }
                         }
                     }
