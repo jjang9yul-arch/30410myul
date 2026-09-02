@@ -33,9 +33,10 @@ def main():
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **패치 내역:**
-        - **방향키 화면 회전 추가**: 마우스 및 방향키(← → ↑ ↓)로 화면 회전 가능
-        - **1자 직선 브레스**: 드래곤의 정교한 일자 공격
-        - **화염 지대 이펙트**: 지면에 지속적으로 불타는 장판 생성
+        - **신규 신화 무기 '오딘(Odin)' 추가**: 초고속 연사 및 거대한 양손 중기관총 (1,500G)
+        - **일자 화염 지대**: 드래곤 브레스 발사 궤적 전체에 화염 장판 생성
+        - **파동 범위 최적화**: 보스 충격파 이펙트와 실제 피해 범위 일치
+        - **방향키 화면 회전**: 마우스 및 방향키(← → ↑ ↓)로 360도 회전
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -282,7 +283,7 @@ def main():
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ffd700;">🔫 기관총 (LMG)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 | 탄창: 100발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">고속 연사 | 탄창: 100발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 300G</p>
                         <button id="buy-lmg-btn" class="buy-btn" onclick="buyWeapon(4)">기관총 구매 (300G)</button>
                     </div>
@@ -299,6 +300,13 @@ def main():
                         <p style="font-size: 12px; color: #aaa; margin: 2px 0;">관통 레이저 사격 | 탄창: 15발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,200G</p>
                         <button id="buy-laser-btn" class="buy-btn" onclick="buyWeapon(6)">레이저총 구매 (1200G)</button>
+                    </div>
+
+                    <div class="buy-item">
+                        <h4 style="margin: 0; color: #ff00ff;">⚡ 오딘 (Odin - Heavy LMG) - [7]</h4>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 & 압도적 화력 | 탄창: 150발</p>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,500G</p>
+                        <button id="buy-odin-btn" class="buy-btn" onclick="buyWeapon(7)">오딘 구매 (1500G)</button>
                     </div>
 
                     <button onclick="toggleShop()" style="margin-top: 10px; padding: 6px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
@@ -338,6 +346,12 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.08);
                         gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                    } else if (type === 'heavy_shot') {
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.06);
+                        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
                     } else if (type === 'laser') {
                         osc.type = 'sine';
                         osc.frequency.setValueAtTime(900, audioCtx.currentTime);
@@ -387,7 +401,8 @@ def main():
                     3: { name: '산탄총', damage: 22, range: 20, fireRate: 650, magSize: 6, reloadTime: 2200, color: 0xff8800, owned: false, price: 150 },
                     4: { name: '기관총', damage: 12, range: 75, fireRate: 75, magSize: 100, reloadTime: 2800, color: 0xffd700, owned: false, price: 300 },
                     5: { name: '바주카포', damage: 220, range: 110, fireRate: 1400, magSize: 1, reloadTime: 2200, color: 0xff2200, owned: false, price: 600 },
-                    6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 }
+                    6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 },
+                    7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1500 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
@@ -397,7 +412,7 @@ def main():
 
                 let scene, camera, renderer, gunMesh, muzzlePoint, muzzleFlashLight;
                 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
-                let rotateLeft = false, rotateRight = false, rotateUp = false, rotateDown = false; // 방향키 회전 변수
+                let rotateLeft = false, rotateRight = false, rotateUp = false, rotateDown = false;
                 
                 let playerVelocityY = 0;
                 let isGrounded = true;
@@ -441,7 +456,6 @@ def main():
 
                     const container = document.getElementById('game-container');
                     
-                    // 마우스 감도 및 360도 자유 회전 처리
                     container.addEventListener('mousemove', (e) => {
                         if (!isGameActive || isShopOpen) return;
                         const sensitivity = 0.0035; 
@@ -501,16 +515,27 @@ def main():
                     else if (currentWeaponId === 3) { bodyGeo = new THREE.BoxGeometry(0.14, 0.16, 0.7); gunLength = 0.7; }
                     else if (currentWeaponId === 4) { bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.85); gunLength = 0.85; }
                     else if (currentWeaponId === 5) { bodyGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 12); gunLength = 0.9; }
-                    else { bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); gunLength = 0.75; }
+                    else if (currentWeaponId === 6) { bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); gunLength = 0.75; }
+                    else if (currentWeaponId === 7) { bodyGeo = new THREE.BoxGeometry(0.32, 0.35, 1.25); gunLength = 1.25; } // 오딘: 압도적인 양손 중기관총 체적
 
                     const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
                     if (currentWeaponId === 5) body.rotation.x = Math.PI / 2;
-                    body.position.set(0.25, -0.2, -0.4);
+                    
+                    // 오딘은 화면 중앙에 두 손으로 들듯 배치
+                    if (currentWeaponId === 7) {
+                        body.position.set(0.0, -0.35, -0.6);
+                    } else {
+                        body.position.set(0.25, -0.2, -0.4);
+                    }
                     gunGroup.add(body);
 
                     muzzlePoint = new THREE.Object3D();
-                    muzzlePoint.position.set(0.25, -0.2, -0.4 - (gunLength / 2));
+                    if (currentWeaponId === 7) {
+                        muzzlePoint.position.set(0.0, -0.35, -0.6 - (gunLength / 2));
+                    } else {
+                        muzzlePoint.position.set(0.25, -0.2, -0.4 - (gunLength / 2));
+                    }
                     gunGroup.add(muzzlePoint);
 
                     muzzleFlashLight = new THREE.PointLight(w.color, 0, 5);
@@ -789,16 +814,25 @@ def main():
                     swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 30 });
                 }
 
-                function createShockwave(pos, radius, damage) {
-                    const geo = new THREE.RingGeometry(0.5, radius, 32);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                function createShockwave(pos, maxRadius, damage) {
+                    // 링 두께 및 영역의 명확한 시각화를 위해 RingGeometry 구성
+                    const ringWidth = 1.2;
+                    const geo = new THREE.RingGeometry(0.1, ringWidth, 32);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
                     const ring = new THREE.Mesh(geo, mat);
                     ring.rotation.x = -Math.PI / 2;
                     ring.position.copy(pos);
                     ring.position.y = 0.1;
 
                     scene.add(ring);
-                    shockwaves.push({ mesh: ring, maxRadius: radius, damage: damage, currentScale: 0.1, expandSpeed: 30.0 });
+                    shockwaves.push({ 
+                        mesh: ring, 
+                        maxRadius: maxRadius, 
+                        damage: damage, 
+                        currentRadius: 0.5, 
+                        ringWidth: ringWidth,
+                        expandSpeed: 18.0 
+                    });
                     playSound('slam');
                 }
 
@@ -861,6 +895,7 @@ def main():
                     if (e.code === 'KeyO') { toggleFullScreen(); return; }
                     if (e.code === 'KeyH') { buyPotion(); return; }
                     if (e.code === 'KeyL') { buyWeapon(6); return; }
+                    if (e.code === 'Digit7') { if (WEAPONS[7].owned) switchWeapon(7); else buyWeapon(7); return; }
                     if (isShopOpen) return;
 
                     switch (e.code) {
@@ -957,6 +992,9 @@ def main():
                         playSound('bazooka');
                         createExplosionEffect(targetPoint);
                     } else {
+                        if (currentWeaponId === 7) playSound('heavy_shot');
+                        else playSound('shot');
+
                         const points = [startPos, targetPoint];
                         const geom = new THREE.BufferGeometry().setFromPoints(points);
                         const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
@@ -975,7 +1013,6 @@ def main():
                     lastShotTime = now;
                     currentAmmo--;
                     
-                    if (currentWeaponId !== 6 && currentWeaponId !== 5) playSound('shot');
                     updateHUD();
 
                     const raycaster = new THREE.Raycaster();
@@ -1061,9 +1098,8 @@ def main():
                     prevTime = time;
 
                     if (isGameActive && !isShopOpen) {
-                        if (isMouseDown && currentWeaponId === 4 && !isReloading) shoot();
+                        if (isMouseDown && (currentWeaponId === 4 || currentWeaponId === 7) && !isReloading) shoot();
 
-                        // 방향키 입력에 의한 화면 360도 회전 처리
                         const keyRotateSpeed = 1.8;
                         if (rotateLeft) yaw += keyRotateSpeed * delta;
                         if (rotateRight) yaw -= keyRotateSpeed * delta;
@@ -1256,28 +1292,42 @@ def main():
                             }
                         });
 
+                        // 링 확장형 충격파 처리 (파동 시각 범위 및 히트 판정 일치)
                         for (let i = shockwaves.length - 1; i >= 0; i--) {
                             const sw = shockwaves[i];
-                            sw.currentScale += sw.expandSpeed * delta;
-                            sw.mesh.scale.set(sw.currentScale, sw.currentScale, 1);
-                            sw.mesh.material.opacity -= delta * 0.8;
+                            sw.currentRadius += sw.expandSpeed * delta;
+                            
+                            // RingGeometry 재생성으로 시각적 링 확대
+                            sw.mesh.geometry.dispose();
+                            sw.mesh.geometry = new THREE.RingGeometry(sw.currentRadius, sw.currentRadius + sw.ringWidth, 32);
+                            sw.mesh.material.opacity -= delta * 0.45;
 
-                            if (sw.mesh.position.distanceTo(playerPos) < sw.currentScale && isGrounded) {
-                                playerHealth -= sw.damage * delta * 2;
+                            const dist2D = new THREE.Vector2(sw.mesh.position.x, sw.mesh.position.z)
+                                .distanceTo(new THREE.Vector2(playerPos.x, playerPos.z));
+
+                            // 링의 시각적 범위에 플레이어가 닿아 있고 착지해 있을 때 피해 적용
+                            if (dist2D >= sw.currentRadius && dist2D <= sw.currentRadius + sw.ringWidth + 0.5 && isGrounded) {
+                                playerHealth -= sw.damage * delta * 3;
                                 updateHUD();
                                 if (playerHealth <= 0) endGame(false);
                             }
 
-                            if (sw.mesh.material.opacity <= 0 || sw.currentScale >= sw.maxRadius) {
+                            if (sw.mesh.material.opacity <= 0 || sw.currentRadius >= sw.maxRadius) {
                                 scene.remove(sw.mesh);
                                 shockwaves.splice(i, 1);
                             }
                         }
 
+                        // 브레스 파티클 및 궤적 전체 화염 지대 생성
                         for (let i = breathParticles.length - 1; i >= 0; i--) {
                             const bp = breathParticles[i];
                             bp.mesh.position.add(bp.velocity.clone().multiplyScalar(delta));
                             bp.life -= delta;
+
+                            // 브레스가 지나가는 모든 위치 지면에 화염 지대 지속 생성
+                            if (Math.random() < 0.4) {
+                                spawnFireGround(bp.mesh.position);
+                            }
 
                             if (bp.mesh.position.distanceTo(playerPos) < 1.8) {
                                 playerHealth -= 18 * delta;
@@ -1285,14 +1335,8 @@ def main():
                                 if (playerHealth <= 0) endGame(false);
                             }
 
-                            if (bp.mesh.position.y <= 0.2) {
+                            if (bp.mesh.position.y <= 0.2 || bp.life <= 0) {
                                 spawnFireGround(bp.mesh.position);
-                                scene.remove(bp.mesh);
-                                breathParticles.splice(i, 1);
-                                continue;
-                            }
-
-                            if (bp.life <= 0) {
                                 scene.remove(bp.mesh);
                                 breathParticles.splice(i, 1);
                             }
