@@ -32,11 +32,11 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **주요 기능 및 치트:**
+        **복원 및 개선 기능:**
         - **M 키 치트**: 누를 때마다 라운드 즉시 스킵 & +100 Gold 지급
-        - **무기별 고유 색상 및 발사 이펙트**: 각 무기 디자인, 총구 화염, 궤적, 레이저/폭발 이펙트 적용
-        - **총 반동 제거**: 모든 무기 반동 0
-        - **보스 시스템**: 5라운드 드래곤(HP 1200, 점프 충격파/브레스) 및 10라운드 소드마스터(HP 2500, 15초 강하 폭발)
+        - **총구 기반 발사 이펙트**: 총구에서 직접 궤적 및 레이저가 발사되도록 정확히 동기화
+        - **소드마스터 패턴**: 기 모으기 후 돌진, 검기 투사체 발사, 강하 폭발 패턴 완벽 구현
+        - **속도 밸런스 개선**: 적 및 보스의 이동 및 스킬 속도 상향
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -103,7 +103,7 @@ def main():
                 #boss-hp-fill {
                     width: 100%;
                     height: 100%;
-                    background: linear-gradient(90deg, #a020f0, #ff0055);
+                    background: linear-gradient(90deg, #00f0ff, #ff0055);
                     transition: width 0.1s linear;
                 }
                 #crosshair {
@@ -251,7 +251,7 @@ def main():
                 </div>
 
                 <div id="boss-hud">
-                    ⚠️ 보스 : <span id="boss-title">크로노스 드래곤</span>
+                    ⚠️ 보스 : <span id="boss-title">소드마스터</span>
                     <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
                 </div>
 
@@ -263,7 +263,7 @@ def main():
                 </div>
 
                 <div id="shop-modal">
-                    <h2 style="color: #ffd700; margin-top:0;">상점 & 연구소</h2>
+                    <h2 style="color: #ffd700; margin-top:0;">상점 & 무기 연구소</h2>
                     <p>보유 골드: <span id="shop-money" style="color: #ffd700; font-weight: bold;">0</span>G</p>
                     <hr style="border-color: #444;">
                     
@@ -290,7 +290,7 @@ def main():
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ff3300;">🚀 바주카포 (Bazooka)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">강력한 화력! (데미지: 180) | 탄창: 1발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">강력한 폭발 화력! | 탄창: 1발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 600G</p>
                         <button id="buy-bazooka-btn" class="buy-btn" onclick="buyWeapon(5)">바주카포 구매 (600G)</button>
                     </div>
@@ -335,49 +335,54 @@ def main():
                     
                     if (type === 'shot') {
                         osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
+                        osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.08);
                         gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
                     } else if (type === 'laser') {
                         osc.type = 'sine';
-                        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                        osc.frequency.setValueAtTime(900, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
                         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                    } else if (type === 'bazooka') {
-                        osc.type = 'square';
+                    } else if (type === 'sword_wave') {
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                        osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.25);
+                        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    } else if (type === 'charge') {
+                        osc.type = 'triangle';
                         osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.4);
+                        osc.frequency.linearRampToValueAtTime(500, audioCtx.currentTime + 0.8);
+                        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+                    } else if (type === 'dash') {
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
                         gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
                     } else if (type === 'slam' || type === 'explosion') {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.5);
                         gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                    } else if (type === 'breath') {
-                        osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(80, audioCtx.currentTime);
-                        osc.frequency.linearRampToValueAtTime(160, audioCtx.currentTime + 0.3);
-                        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
                     }
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
                     osc.start();
-                    osc.stop(audioCtx.currentTime + 0.6);
+                    osc.stop(audioCtx.currentTime + 0.9);
                 }
 
-                // 무기 설정 (색상 및 개별 특성 포함)
                 const WEAPONS = {
-                    1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0, color: 0x00ffcc, owned: true },
-                    2: { name: '소총', damage: 55, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0, color: 0x3388ff, owned: true },
-                    3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0, pellets: 8, color: 0xff8800, owned: false, price: 150 },
-                    4: { name: '기관총', damage: 8, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0, color: 0xffd700, owned: false, price: 300 },
-                    5: { name: '바주카포', damage: 180, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0, color: 0xff2200, owned: false, price: 600 },
-                    6: { name: '레이저총', damage: 50, range: 120, fireRate: 150, magSize: 15, reloadTime: 1800, recoil: 0, color: 0x00f0ff, owned: false, price: 1200 }
+                    1: { name: '권총', damage: 30, range: 45, fireRate: 250, magSize: 12, reloadTime: 1000, color: 0x00ffcc, owned: true },
+                    2: { name: '소총', damage: 60, range: 65, fireRate: 110, magSize: 30, reloadTime: 1800, color: 0x3388ff, owned: true },
+                    3: { name: '산탄총', damage: 22, range: 20, fireRate: 650, magSize: 6, reloadTime: 2200, color: 0xff8800, owned: false, price: 150 },
+                    4: { name: '기관총', damage: 12, range: 75, fireRate: 75, magSize: 100, reloadTime: 2800, color: 0xffd700, owned: false, price: 300 },
+                    5: { name: '바주카포', damage: 220, range: 110, fireRate: 1400, magSize: 1, reloadTime: 2200, color: 0xff2200, owned: false, price: 600 },
+                    6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
@@ -385,18 +390,18 @@ def main():
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
 
-                let scene, camera, renderer, gunMesh, muzzleFlashLight;
+                let scene, camera, renderer, gunMesh, muzzlePoint, muzzleFlashLight;
                 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
                 
                 let playerVelocityY = 0;
                 let isGrounded = true;
                 const GRAVITY = -28.0;
-                const JUMP_FORCE = 10.0;
+                const JUMP_FORCE = 10.5;
                 const PLAYER_HEIGHT = 1.6;
 
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], shockwaves = [], breathParticles = [], explosionEffects = [], visualEffects = [];
+                let enemies = [], shockwaves = [], swordWaves = [], breathParticles = [], explosionEffects = [], visualEffects = [];
                 let isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
                 let roundRewardGiven = false;
@@ -475,30 +480,34 @@ def main():
                     }
                 }
 
+                // 무기 모델 및 정교한 총구 위치(Muzzle Point) 생성
                 function createGunModel() {
                     if (gunMesh) camera.remove(gunMesh);
 
                     const gunGroup = new THREE.Group();
                     const w = WEAPONS[currentWeaponId];
                     
-                    let bodyGeo;
-                    if (currentWeaponId === 1) bodyGeo = new THREE.BoxGeometry(0.08, 0.12, 0.35); // 권총
-                    else if (currentWeaponId === 2) bodyGeo = new THREE.BoxGeometry(0.1, 0.14, 0.65); // 소총
-                    else if (currentWeaponId === 3) bodyGeo = new THREE.BoxGeometry(0.14, 0.16, 0.7); // 산탄총
-                    else if (currentWeaponId === 4) bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.85); // 기관총
-                    else if (currentWeaponId === 5) bodyGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12); // 바주카포
-                    else bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); // 레이저총
+                    let bodyGeo, gunLength = 0.5;
+                    if (currentWeaponId === 1) { bodyGeo = new THREE.BoxGeometry(0.08, 0.12, 0.35); gunLength = 0.35; }
+                    else if (currentWeaponId === 2) { bodyGeo = new THREE.BoxGeometry(0.1, 0.14, 0.65); gunLength = 0.65; }
+                    else if (currentWeaponId === 3) { bodyGeo = new THREE.BoxGeometry(0.14, 0.16, 0.7); gunLength = 0.7; }
+                    else if (currentWeaponId === 4) { bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.85); gunLength = 0.85; }
+                    else if (currentWeaponId === 5) { bodyGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 12); gunLength = 0.9; }
+                    else { bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); gunLength = 0.75; }
 
                     const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
                     if (currentWeaponId === 5) body.rotation.x = Math.PI / 2;
-                    body.position.set(0.2, -0.2, -0.4);
+                    body.position.set(0.25, -0.2, -0.4);
                     gunGroup.add(body);
 
-                    // 총구 화염 플래시 조명
+                    // 총구 위치 앵커 오프셋
+                    muzzlePoint = new THREE.Object3D();
+                    muzzlePoint.position.set(0.25, -0.2, -0.4 - (gunLength / 2));
+                    gunGroup.add(muzzlePoint);
+
                     muzzleFlashLight = new THREE.PointLight(w.color, 0, 5);
-                    muzzleFlashLight.position.set(0.2, -0.2, -0.8);
-                    gunGroup.add(muzzleFlashLight);
+                    muzzlePoint.add(muzzleFlashLight);
 
                     gunMesh = gunGroup;
                     camera.add(gunMesh);
@@ -556,6 +565,8 @@ def main():
                     
                     shockwaves.forEach(s => scene.remove(s.mesh));
                     shockwaves = [];
+                    swordWaves.forEach(sw => scene.remove(sw.mesh));
+                    swordWaves = [];
                     breathParticles.forEach(b => scene.remove(b.mesh));
                     breathParticles = [];
                     explosionEffects.forEach(ex => scene.remove(ex.mesh));
@@ -578,7 +589,7 @@ def main():
                         document.getElementById('boss-hud').style.display = 'block';
                         document.getElementById('boss-title').innerText = "소드마스터";
                     } else {
-                        const enemyCount = round * 2 + 1;
+                        const enemyCount = round * 2 + 2;
                         for (let i = 0; i < enemyCount; i++) {
                             createEnemy((Math.random()-0.5)*40, (Math.random()-0.5)*40 - 10);
                         }
@@ -588,7 +599,7 @@ def main():
 
                 function createEnemy(x, z) {
                     const group = new THREE.Group();
-                    const body = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.4, 6), new THREE.MeshStandardMaterial({ color: 0x331122 }));
+                    const body = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.4, 6), new THREE.MeshStandardMaterial({ color: 0xaa2255 }));
                     body.rotation.x = Math.PI;
                     body.position.y = 1.3;
                     group.add(body);
@@ -598,10 +609,10 @@ def main():
 
                     enemies.push({
                         mesh: group,
-                        hp: 50 + (round * 10),
-                        maxHp: 50 + (round * 10),
-                        speed: 3 + (Math.random() * 1.5),
-                        damage: 10,
+                        hp: 60 + (round * 12),
+                        maxHp: 60 + (round * 12),
+                        speed: 5.5 + (Math.random() * 2.0),
+                        damage: 12,
                         lastAttack: 0,
                         isBoss: false
                     });
@@ -622,45 +633,99 @@ def main():
                     head.position.set(0, 4.5, -2.8);
                     group.add(head);
 
-                    const wingShape = new THREE.BufferGeometry();
-                    const wingVertices = new Float32Array([
-                        0, 0, 0,   -6, 3, -1,   -3, -2, -1,
-                        0, 0, 0,    6, 3, -1,    3, -2, -1
-                    ]);
-                    wingShape.setAttribute('position', new THREE.BufferAttribute(wingVertices, 3));
-                    const wings = new THREE.Mesh(wingShape, wingMat);
-                    wings.position.set(0, 4.0, 0);
-                    group.add(wings);
-
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 1200;
+                    const maxHp = 1400;
                     bossEnemy = {
                         mesh: group,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 3.5,
+                        speed: 4.8,
                         isBoss: true,
                         bossType: 'dragon',
                         state: 'walk',
                         jumpVelocityY: 0,
                         lastSkillTime: performance.now(),
-                        skillCooldown: 4000
+                        skillCooldown: 3500
                     };
                     enemies.push(bossEnemy);
                 }
 
+                // 소드마스터 생성 및 고유 속성 정의
+                function createSwordBossEnemy(x, z) {
+                    const group = new THREE.Group();
+                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x111122, metalness: 0.9, roughness: 0.2 });
+                    const swordMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.8 });
+
+                    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.4, 1.0), armorMat);
+                    torso.position.y = 2.5;
+                    group.add(torso);
+
+                    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.8, 0.5), swordMat);
+                    sword.position.set(1.6, 2.5, -0.5);
+                    sword.rotation.x = Math.PI / 4;
+                    group.add(sword);
+
+                    // 기 모으기 오라 구체
+                    const auraGeo = new THREE.SphereGeometry(2.5, 16, 16);
+                    const auraMat = new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0 });
+                    const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+                    auraMesh.position.y = 2.5;
+                    group.add(auraMesh);
+
+                    group.position.set(x, 0, z);
+                    scene.add(group);
+
+                    const maxHp = 2800;
+                    bossEnemy = {
+                        mesh: group,
+                        auraMesh: auraMesh,
+                        hp: maxHp,
+                        maxHp: maxHp,
+                        speed: 5.5,
+                        isBoss: true,
+                        bossType: 'blade',
+                        state: 'walk',
+                        chargeTimer: 0,
+                        dashDir: new THREE.Vector3(),
+                        lastSkillTime: performance.now(),
+                        skillCooldown: 3000,
+                        lastSuperJumpTime: performance.now(),
+                        superJumpCooldown: 12000,
+                        targetLandPos: new THREE.Vector3()
+                    };
+                    enemies.push(bossEnemy);
+                }
+
+                // 검기 투사체 생성
+                function spawnSwordWave(bossPos, targetPos) {
+                    playSound('sword_wave');
+                    const waveGeo = new THREE.TorusGeometry(2.0, 0.15, 8, 24, Math.PI);
+                    const waveMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide });
+                    const waveMesh = new THREE.Mesh(waveGeo, waveMat);
+
+                    const startPos = bossPos.clone().add(new THREE.Vector3(0, 2.5, 0));
+                    waveMesh.position.copy(startPos);
+                    waveMesh.lookAt(targetPos);
+                    waveMesh.rotation.z += Math.PI / 2;
+
+                    const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
+                    scene.add(waveMesh);
+
+                    swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 30 });
+                }
+
                 function createShockwave(pos, radius, damage) {
                     const geo = new THREE.RingGeometry(0.5, radius, 32);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0xff3300, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
                     const ring = new THREE.Mesh(geo, mat);
                     ring.rotation.x = -Math.PI / 2;
                     ring.position.copy(pos);
                     ring.position.y = 0.1;
 
                     scene.add(ring);
-                    shockwaves.push({ mesh: ring, maxRadius: radius, damage: damage, currentScale: 0.1, expandSpeed: 22.0 });
+                    shockwaves.push({ mesh: ring, maxRadius: radius, damage: damage, currentScale: 0.1, expandSpeed: 25.0 });
                     playSound('slam');
                 }
 
@@ -679,47 +744,15 @@ def main():
 
                         breathParticles.push({
                             mesh: pMesh,
-                            velocity: spreadDir.multiplyScalar(18.0 + Math.random()*10.0),
+                            velocity: spreadDir.multiplyScalar(22.0 + Math.random()*10.0),
                             life: 1.2
                         });
                     }
                 }
 
-                function createSwordBossEnemy(x, z) {
-                    const group = new THREE.Group();
-                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x23232d, metalness: 0.9 });
-                    const swordMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.6 });
-
-                    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1.0), armorMat);
-                    torso.position.y = 2.5;
-                    group.add(torso);
-
-                    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.5, 0.4), swordMat);
-                    sword.position.set(1.8, 2.5, 0);
-                    group.add(sword);
-
-                    group.position.set(x, 0, z);
-                    scene.add(group);
-
-                    const maxHp = 2500;
-                    bossEnemy = {
-                        mesh: group,
-                        hp: maxHp,
-                        maxHp: maxHp,
-                        speed: 2.2,
-                        isBoss: true,
-                        bossType: 'blade',
-                        state: 'walk',
-                        lastSuperJumpTime: performance.now(),
-                        superJumpCooldown: 15000,
-                        targetLandPos: new THREE.Vector3()
-                    };
-                    enemies.push(bossEnemy);
-                }
-
                 function createExplosionEffect(pos) {
                     playSound('explosion');
-                    const geo = new THREE.SphereGeometry(1.0, 16, 16);
+                    const geo = new THREE.SphereGeometry(1.2, 16, 16);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 1.0 });
                     const mesh = new THREE.Mesh(geo, mat);
                     mesh.position.copy(pos);
@@ -729,14 +762,10 @@ def main():
                     explosionEffects.push({ mesh: mesh, scale: 1.0, opacity: 1.0 });
                 }
 
-                // M 키 치트 포함 키 입력 제어
                 function onKeyDown(e) {
                     initAudio();
                     if (!isGameActive) return;
-                    if (e.code === 'KeyM') {
-                        skipRoundWithCheat();
-                        return;
-                    }
+                    if (e.code === 'KeyM') { skipRoundWithCheat(); return; }
                     if (e.code === 'KeyB') { toggleShop(); return; }
                     if (e.code === 'KeyO') { toggleFullScreen(); return; }
                     if (e.code === 'KeyH') { buyPotion(); return; }
@@ -763,7 +792,6 @@ def main():
                     }
                 }
 
-                // M 키 누를 때 라운드 통과 및 100골드 지급
                 function skipRoundWithCheat() {
                     money += 100;
                     if (round < 10) {
@@ -805,32 +833,33 @@ def main():
                     }, w.reloadTime);
                 }
 
-                // 무기별 이펙트 생성 (총구 플래시, 궤적, 레이저, 바주카 폭발)
+                // 무기 총구 위치 기반 발사 이펙트 구현
                 function triggerMuzzleEffect(targetPoint) {
                     const w = WEAPONS[currentWeaponId];
                     if (muzzleFlashLight) {
-                        muzzleFlashLight.intensity = 3.0;
+                        muzzleFlashLight.intensity = 4.0;
                         setTimeout(() => { if (muzzleFlashLight) muzzleFlashLight.intensity = 0; }, 50);
                     }
 
+                    // 카메라 위치가 아닌 실제 화면상 총구 오브젝트 위치 산출
                     const startPos = new THREE.Vector3();
-                    camera.getWorldPosition(startPos);
-                    startPos.y -= 0.2;
+                    muzzlePoint.getWorldPosition(startPos);
 
-                    if (currentWeaponId === 6) { // 레이저 빔 이펙트
+                    if (currentWeaponId === 6) { // 레이저 빔
                         playSound('laser');
-                        const geom = new THREE.CylinderGeometry(0.04, 0.04, startPos.distanceTo(targetPoint), 8);
+                        const dist = startPos.distanceTo(targetPoint);
+                        const geom = new THREE.CylinderGeometry(0.05, 0.05, dist, 8);
                         geom.rotateX(Math.PI / 2);
                         const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.9 });
                         const laserMesh = new THREE.Mesh(geom, mat);
                         laserMesh.position.copy(startPos).add(targetPoint).multiplyScalar(0.5);
                         laserMesh.lookAt(targetPoint);
                         scene.add(laserMesh);
-                        visualEffects.push({ mesh: laserMesh, life: 0.15 });
-                    } else if (currentWeaponId === 5) { // 바주카포 폭발 및 궤적
+                        visualEffects.push({ mesh: laserMesh, life: 0.12 });
+                    } else if (currentWeaponId === 5) { // 바주카 폭발
                         playSound('bazooka');
                         createExplosionEffect(targetPoint);
-                    } else { // 기본 탄궤적
+                    } else { // 탄궤적
                         const points = [startPos, targetPoint];
                         const geom = new THREE.BufferGeometry().setFromPoints(points);
                         const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
@@ -871,7 +900,7 @@ def main():
                                 scene.remove(enemyObj.mesh);
                                 enemies = enemies.filter(e => e !== enemyObj);
                                 kills++;
-                                money += enemyObj.isBoss ? 800 : 25;
+                                money += enemyObj.isBoss ? 800 : 30;
                                 if (enemyObj.isBoss) bossEnemy = null;
                                 updateHUD();
                                 if (enemies.length === 0) endGame(true);
@@ -953,7 +982,7 @@ def main():
                         direction.x = Number(moveRight) - Number(moveLeft);
                         direction.normalize();
 
-                        const moveSpeed = isSprinting ? 65.0 : 35.0;
+                        const moveSpeed = isSprinting ? 75.0 : 45.0;
                         if (moveForward || moveBackward) velocity.z -= direction.z * moveSpeed * delta;
                         if (moveLeft || moveRight) velocity.x -= direction.x * moveSpeed * delta;
 
@@ -962,7 +991,7 @@ def main():
 
                         const playerPos = camera.position;
 
-                        // 시각적 연출 및 이펙트 소멸 제어
+                        // 시각적 이펙트 소멸
                         for (let i = visualEffects.length - 1; i >= 0; i--) {
                             const ve = visualEffects[i];
                             ve.life -= delta;
@@ -972,6 +1001,28 @@ def main():
                             }
                         }
 
+                        // 검기 투사체 이동 및 충돌
+                        for (let i = swordWaves.length - 1; i >= 0; i--) {
+                            const sw = swordWaves[i];
+                            sw.mesh.position.add(sw.dir.clone().multiplyScalar(sw.speed * delta));
+                            sw.life -= delta;
+
+                            if (sw.mesh.position.distanceTo(playerPos) < 1.8) {
+                                playerHealth -= sw.damage;
+                                updateHUD();
+                                scene.remove(sw.mesh);
+                                swordWaves.splice(i, 1);
+                                if (playerHealth <= 0) endGame(false);
+                                continue;
+                            }
+
+                            if (sw.life <= 0) {
+                                scene.remove(sw.mesh);
+                                swordWaves.splice(i, 1);
+                            }
+                        }
+
+                        // 적 및 보스 인공지능 동작
                         enemies.forEach(enemy => {
                             const enemyPos = enemy.mesh.position;
 
@@ -1008,44 +1059,79 @@ def main():
                                         }
                                     }
                                 } else if (enemy.bossType === 'blade') {
+                                    // 소드마스터 패턴 제어
                                     enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
 
                                     if (enemy.state === 'walk') {
                                         const dist = enemyPos.distanceTo(playerPos);
-                                        if (dist > 2.0) {
+                                        if (dist > 3.0) {
                                             const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
                                             enemyPos.x += dir.x * enemy.speed * delta;
                                             enemyPos.z += dir.z * enemy.speed * delta;
                                         }
 
+                                        // 15초 원거리 대형 점프 강하 패턴
                                         if (time - enemy.lastSuperJumpTime > enemy.superJumpCooldown) {
                                             enemy.state = 'super_jump';
                                             enemy.lastSuperJumpTime = time;
-                                            enemy.jumpVelocityY = 25.0;
+                                            enemy.jumpVelocityY = 26.0;
                                             enemy.targetLandPos.copy(playerPos);
+                                        } 
+                                        // 무작위 스킬 발동 (기 모아 돌진 or 검기 날리기)
+                                        else if (time - enemy.lastSkillTime > enemy.skillCooldown) {
+                                            enemy.lastSkillTime = time;
+                                            if (Math.random() > 0.45) { // 기 모으기 후 고속 돌진
+                                                enemy.state = 'charging';
+                                                enemy.chargeTimer = 0;
+                                                playSound('charge');
+                                            } else { // 검기 날리기
+                                                spawnSwordWave(enemyPos, playerPos);
+                                            }
+                                        }
+                                    } else if (enemy.state === 'charging') {
+                                        enemy.chargeTimer += delta;
+                                        enemy.auraMesh.material.opacity = Math.min(0.8, enemy.chargeTimer * 0.8);
+
+                                        if (enemy.chargeTimer >= 1.0) { // 1초간 기 모은 후 돌진
+                                            enemy.state = 'dashing';
+                                            enemy.auraMesh.material.opacity = 0;
+                                            enemy.dashDir.subVectors(playerPos, enemyPos).normalize();
+                                            enemy.chargeTimer = 0;
+                                            playSound('dash');
+                                        }
+                                    } else if (enemy.state === 'dashing') { // 고속 돌진
+                                        enemyPos.x += enemy.dashDir.x * 38.0 * delta;
+                                        enemyPos.z += enemy.dashDir.z * 38.0 * delta;
+                                        enemy.chargeTimer += delta;
+
+                                        if (enemyPos.distanceTo(playerPos) < 2.5) {
+                                            playerHealth -= 40;
+                                            updateHUD();
+                                            enemy.state = 'walk';
+                                            if (playerHealth <= 0) endGame(false);
+                                        } else if (enemy.chargeTimer > 0.6) {
+                                            enemy.state = 'walk';
                                         }
                                     } else if (enemy.state === 'super_jump') {
                                         enemy.jumpVelocityY += GRAVITY * delta;
                                         enemyPos.y += enemy.jumpVelocityY * delta;
 
-                                        if (enemy.jumpVelocityY < 0) {
-                                            enemy.state = 'dive';
-                                        }
+                                        if (enemy.jumpVelocityY < 0) enemy.state = 'dive';
                                     } else if (enemy.state === 'dive') {
                                         const dir = new THREE.Vector3().subVectors(enemy.targetLandPos, enemyPos);
                                         dir.y = 0;
                                         dir.normalize();
 
-                                        enemyPos.x += dir.x * 25.0 * delta;
-                                        enemyPos.z += dir.z * 25.0 * delta;
-                                        enemyPos.y -= 35.0 * delta;
+                                        enemyPos.x += dir.x * 28.0 * delta;
+                                        enemyPos.z += dir.z * 28.0 * delta;
+                                        enemyPos.y -= 40.0 * delta;
 
                                         if (enemyPos.y <= 0) {
                                             enemyPos.y = 0;
                                             enemy.state = 'walk';
                                             createExplosionEffect(enemyPos.clone());
-                                            if (enemyPos.distanceTo(playerPos) < 6.0) {
-                                                playerHealth -= 50;
+                                            if (enemyPos.distanceTo(playerPos) < 7.0) {
+                                                playerHealth -= 55;
                                                 updateHUD();
                                                 if (playerHealth <= 0) endGame(false);
                                             }
@@ -1059,7 +1145,7 @@ def main():
                                     enemyPos.x += dir.x * enemy.speed * delta;
                                     enemyPos.z += dir.z * enemy.speed * delta;
                                     enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-                                } else if (time - enemy.lastAttack > 1000) {
+                                } else if (time - enemy.lastAttack > 800) {
                                     playerHealth -= enemy.damage;
                                     enemy.lastAttack = time;
                                     updateHUD();
@@ -1091,8 +1177,8 @@ def main():
                             bp.mesh.position.add(bp.velocity.clone().multiplyScalar(delta));
                             bp.life -= delta;
 
-                            if (bp.mesh.position.distanceTo(playerPos) < 1.5) {
-                                playerHealth -= 8 * delta;
+                            if (bp.mesh.position.distanceTo(playerPos) < 1.8) {
+                                playerHealth -= 10 * delta;
                                 updateHUD();
                                 if (playerHealth <= 0) endGame(false);
                             }
@@ -1105,8 +1191,8 @@ def main():
 
                         for (let i = explosionEffects.length - 1; i >= 0; i--) {
                             const ex = explosionEffects[i];
-                            ex.scale += 20.0 * delta;
-                            ex.opacity -= 1.5 * delta;
+                            ex.scale += 22.0 * delta;
+                            ex.opacity -= 1.6 * delta;
                             ex.mesh.scale.set(ex.scale, ex.scale, ex.scale);
                             ex.mesh.material.opacity = ex.opacity;
 
