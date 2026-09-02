@@ -400,6 +400,7 @@ def main():
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
                 let enemies = [], shockwaves = [], isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
+                let roundRewardGiven = false;
                 let bossEnemy = null;
 
                 let pitch = 0, yaw = 0;
@@ -634,6 +635,7 @@ def main():
                     shockwaves = [];
 
                     playerHealth = 150;
+                    roundRewardGiven = false;
                     camera.position.set(0, PLAYER_HEIGHT, 40);
                     
                     document.getElementById('boss-hud').style.display = 'none';
@@ -707,166 +709,212 @@ def main():
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    // 드래곤형 보스: 밝은 진홍색/보라색 갑주 + 뿔 + 날개 + 꼬리
-                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x65152a, metalness: 0.75, roughness: 0.22, emissive: 0x250008, emissiveIntensity: 0.45 });
-                    const scaleMat = new THREE.MeshStandardMaterial({ color: 0x9b2335, metalness: 0.35, roughness: 0.45 });
-                    const wingMat = new THREE.MeshStandardMaterial({ color: 0x3d0d25, metalness: 0.35, roughness: 0.4, side: THREE.DoubleSide });
-                    const hornMat = new THREE.MeshStandardMaterial({ color: 0xf0a34a, metalness: 0.5, roughness: 0.25, emissive: 0x401000, emissiveIntensity: 0.3 });
+                    // 거대한 용 보스: 몸통, 긴 목, 턱, 뿔, 날개, 다리, 꼬리, 등가시
+                    const skinMat = new THREE.MeshStandardMaterial({ color: 0x6b1020, metalness: 0.25, roughness: 0.5, emissive: 0x220006, emissiveIntensity: 0.25 });
+                    const scaleMat = new THREE.MeshStandardMaterial({ color: 0x9d2034, metalness: 0.15, roughness: 0.62 });
+                    const wingMat = new THREE.MeshStandardMaterial({ color: 0x260812, metalness: 0.1, roughness: 0.7, side: THREE.DoubleSide });
+                    const hornMat = new THREE.MeshStandardMaterial({ color: 0xc98742, metalness: 0.55, roughness: 0.28 });
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffff55 });
+                    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff6a00 });
 
-                    // 몸통
-                    const body = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 12), armorMat);
-                    body.position.y = 3.7;
-                    body.scale.set(1.0, 1.15, 0.9);
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(3.0, 20, 14), skinMat);
+                    body.position.set(0, 4.0, 0);
+                    body.scale.set(1.15, 1.0, 1.55);
                     group.add(body);
 
-                    // 목 + 용 머리
-                    const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.65, 2.4, 8), scaleMat);
-                    neck.position.set(0, 6.0, -0.1);
+                    const chest = new THREE.Mesh(new THREE.SphereGeometry(2.15, 16, 12), scaleMat);
+                    chest.position.set(0, 4.15, -1.65);
+                    chest.scale.set(1.0, 1.05, 0.75);
+                    group.add(chest);
+
+                    const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.65, 3.4, 10), skinMat);
+                    neck.position.set(0, 6.25, -0.95);
+                    neck.rotation.x = -0.15;
                     group.add(neck);
 
-                    const head = new THREE.Mesh(new THREE.SphereGeometry(1.55, 12, 8), armorMat);
-                    head.scale.set(1.15, 0.9, 1.35);
-                    head.position.set(0, 7.25, -0.65);
+                    const head = new THREE.Mesh(new THREE.SphereGeometry(1.75, 16, 12), skinMat);
+                    head.position.set(0, 8.0, -1.75);
+                    head.scale.set(1.18, 0.88, 1.35);
                     group.add(head);
 
-                    // 주둥이
-                    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.78, 2.0, 8), scaleMat);
-                    snout.rotation.x = -Math.PI / 2;
-                    snout.position.set(0, 7.05, -2.0);
-                    group.add(snout);
+                    // 아래턱을 따로 만들어 용 머리 실루엣 강화
+                    const jaw = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.55, 2.25), scaleMat);
+                    jaw.position.set(0, 7.45, -2.55);
+                    jaw.rotation.x = -0.08;
+                    group.add(jaw);
 
-                    // 뿔 2개
-                    [-1, 1].forEach(side => {
-                        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.9, 8), hornMat);
-                        horn.position.set(side * 0.85, 8.35, -0.45);
-                        horn.rotation.z = side * -0.35;
-                        horn.rotation.x = -0.15;
-                        group.add(horn);
-                    });
+                    // 코/콧구멍
+                    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.4, 8), scaleMat);
+                    nose.rotation.x = -Math.PI / 2;
+                    nose.position.set(0, 7.85, -3.05);
+                    group.add(nose);
 
-                    // 발광하는 용의 눈
-                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff000 });
+                    // 눈 + 눈썹 능선
                     [-1, 1].forEach(side => {
-                        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat);
-                        eye.position.set(side * 0.62, 7.45, -1.85);
+                        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
+                        eye.position.set(side * 0.72, 8.18, -3.0);
                         group.add(eye);
+                        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.45), skinMat);
+                        brow.position.set(side * 0.7, 8.48, -2.82);
+                        brow.rotation.z = side * -0.22;
+                        group.add(brow);
                     });
 
-                    // 거대한 날개 2장
+                    // 큰 뒤쪽 뿔 4개
                     [-1, 1].forEach(side => {
-                        const wing = new THREE.Mesh(new THREE.ConeGeometry(3.6, 5.8, 4), wingMat);
-                        wing.position.set(side * 3.2, 5.2, 0.25);
-                        wing.rotation.z = side * (Math.PI / 2.7);
-                        wing.rotation.x = side * 0.12;
-                        wing.scale.set(1.0, 1.0, 0.45);
-                        group.add(wing);
-
-                        // 날개 끝 발톱
-                        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.4, 6), hornMat);
-                        claw.position.set(side * 5.0, 4.3, 0.1);
-                        claw.rotation.z = side * Math.PI / 2;
-                        group.add(claw);
+                        for (let k = 0; k < 2; k++) {
+                            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.32 - k * 0.06, 2.2 - k * 0.25, 8), hornMat);
+                            horn.position.set(side * (0.8 + k * 0.38), 9.0 - k * 0.15, -1.2 + k * 0.15);
+                            horn.rotation.z = side * (0.32 + k * 0.1);
+                            horn.rotation.x = -0.25;
+                            group.add(horn);
+                        }
                     });
 
-                    // 꼬리: 뒤쪽으로 길게 이어지는 3단 원뿔
-                    for (let i = 0; i < 4; i++) {
-                        const tail = new THREE.Mesh(new THREE.ConeGeometry(1.15 - i * 0.22, 2.4, 8), scaleMat);
-                        tail.rotation.x = Math.PI / 2;
-                        tail.position.set(0, 2.6 - i * 0.25, 2.0 + i * 1.55);
+                    // 거대한 박쥐형 날개: 중앙 막 + 날개 뼈
+                    [-1, 1].forEach(side => {
+                        const membrane = new THREE.Mesh(new THREE.ConeGeometry(4.6, 7.2, 4, 1, true), wingMat);
+                        membrane.position.set(side * 3.5, 6.0, 0.4);
+                        membrane.rotation.z = side * (Math.PI / 2.15);
+                        membrane.rotation.x = side * 0.08;
+                        membrane.scale.set(1.0, 1.0, 0.55);
+                        group.add(membrane);
+
+                        for (let k = 0; k < 3; k++) {
+                            const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 4.2, 6), hornMat);
+                            bone.position.set(side * (3.0 + k * 0.9), 6.0 + k * 0.65, 0.2 + k * 0.25);
+                            bone.rotation.z = side * (Math.PI / 2.3 - k * 0.12);
+                            group.add(bone);
+                        }
+                    });
+
+                    // 네 발 + 발톱
+                    [-1, 1].forEach(side => {
+                        [-1, 1].forEach(front => {
+                            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.62, 2.5, 8), skinMat);
+                            leg.position.set(side * 1.55, 2.35, front * 1.0);
+                            leg.rotation.z = side * 0.18;
+                            group.add(leg);
+                            for (let c = -1; c <= 1; c++) {
+                                const claw = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.7, 6), hornMat);
+                                claw.position.set(side * (1.55 + c * 0.28), 1.15, front * 1.25 + c * 0.12);
+                                claw.rotation.x = front * 0.65;
+                                group.add(claw);
+                            }
+                        });
+                    });
+
+                    // 긴 꼬리 + 꼬리 끝 가시
+                    for (let i = 0; i < 7; i++) {
+                        const r = 1.25 - i * 0.14;
+                        const tail = new THREE.Mesh(new THREE.SphereGeometry(Math.max(r, 0.25), 10, 8), skinMat);
+                        tail.position.set(0, 3.6 - i * 0.22, 2.0 + i * 1.35);
+                        tail.scale.set(1.0, 0.85, 1.2);
                         group.add(tail);
+                        if (i > 1) {
+                            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 6), hornMat);
+                            spike.position.set(0, 4.0 - i * 0.2, 2.25 + i * 1.35);
+                            spike.rotation.x = Math.PI / 2;
+                            group.add(spike);
+                        }
                     }
 
-                    // 가슴의 발광 코어
-                    const core = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.62, 12, 12),
-                        new THREE.MeshBasicMaterial({ color: 0xff4a00 })
-                    );
-                    core.position.set(0, 4.3, -2.15);
-                    group.add(core);
+                    // 등가시
+                    for (let i = 0; i < 5; i++) {
+                        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.5, 6), hornMat);
+                        spike.position.set(0, 6.2 - i * 0.55, 1.0 + i * 0.45);
+                        spike.rotation.x = Math.PI / 2;
+                        group.add(spike);
+                    }
 
-                    const auraLight = new THREE.PointLight(0xff3b00, 7, 28);
-                    auraLight.position.set(0, 5.5, -1);
-                    group.add(auraLight);
+                    const core = new THREE.Mesh(new THREE.SphereGeometry(0.65, 12, 12), fireMat);
+                    core.position.set(0, 4.5, -2.55);
+                    group.add(core);
+                    group.add(new THREE.PointLight(0xff3b00, 8, 30));
 
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 950 + (round * 300);
-                    bossEnemy = {
-                        mesh: group,
-                        hp: maxHp,
-                        maxHp: maxHp,
-                        speed: 3.4,
-                        damage: 18,
-                        lastAttack: 0,
-                        lastSlam: performance.now(),
-                        isSlamming: false,
-                        slamPhase: 0,
-                        isBoss: true,
-                        attackIndex: 0,
-                        lastBossAttack: performance.now(),
-                        attackCooldown: 4200
-                    };
-
+                    const maxHp = 950 + round * 300;
+                    bossEnemy = { mesh: group, hp: maxHp, maxHp, speed: 3.4, damage: 18, lastAttack: 0,
+                        lastSlam: performance.now(), isSlamming: false, slamPhase: 0, isBoss: true,
+                        attackIndex: 0, lastBossAttack: performance.now(), attackCooldown: 4200 };
                     enemies.push(bossEnemy);
                 }
 
-                // 드래곤이 실제 불꽃을 길게 뿜는 브레스
+                // 용이 입에서 플레이어 방향으로 길고 곧은 불줄기를 지속적으로 뿜음
                 function createFireBreath(boss) {
-                    const playerPos = camera.position.clone();
-                    const origin = boss.mesh.position.clone().add(new THREE.Vector3(0, 7.0, -2.0));
-                    const dir = new THREE.Vector3().subVectors(playerPos, origin).normalize();
-                    const distance = Math.min(18, origin.distanceTo(playerPos));
-                    const center = origin.clone().add(dir.clone().multiplyScalar(distance * 0.5));
+                    const origin = boss.mesh.position.clone().add(new THREE.Vector3(0, 7.8, -4.0));
+                    const target = camera.position.clone();
+                    const dir = new THREE.Vector3().subVectors(target, origin).normalize();
+                    const length = 28;
+                    const center = origin.clone().add(dir.clone().multiplyScalar(length / 2));
 
                     const outer = new THREE.Mesh(
-                        new THREE.ConeGeometry(2.8, distance, 24, 1, true),
-                        new THREE.MeshBasicMaterial({ color: 0xff2a00, transparent: true, opacity: 0.42, side: THREE.DoubleSide })
+                        new THREE.CylinderGeometry(1.8, 0.8, length, 20, 1, true),
+                        new THREE.MeshBasicMaterial({ color: 0xff2400, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
                     );
                     outer.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
                     outer.position.copy(center);
                     scene.add(outer);
 
                     const inner = new THREE.Mesh(
-                        new THREE.ConeGeometry(1.35, distance * 0.92, 20, 1, true),
-                        new THREE.MeshBasicMaterial({ color: 0xffd21f, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+                        new THREE.CylinderGeometry(0.72, 0.28, length * 0.98, 16, 1, true),
+                        new THREE.MeshBasicMaterial({ color: 0xffd21f, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
                     );
                     inner.quaternion.copy(outer.quaternion);
-                    inner.position.copy(origin.clone().add(dir.clone().multiplyScalar(distance * 0.46)));
+                    inner.position.copy(center);
                     scene.add(inner);
 
-                    const flames = [];
-                    for (let i = 0; i < 12; i++) {
+                    const flameParticles = [];
+                    for (let i = 0; i < 24; i++) {
                         const t = Math.random();
-                        const p = origin.clone().add(dir.clone().multiplyScalar(distance * t));
-                        p.x += (Math.random() - 0.5) * (1.0 + t * 3.0);
-                        p.y += (Math.random() - 0.5) * (1.0 + t * 2.0);
-                        p.z += (Math.random() - 0.5) * (1.0 + t * 3.0);
-                        const flame = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.25 + Math.random() * 0.35, 8, 8),
-                            new THREE.MeshBasicMaterial({ color: Math.random() > 0.45 ? 0xff3b00 : 0xffc21a, transparent: true, opacity: 0.85 })
-                        );
-                        flame.position.copy(p);
-                        scene.add(flame);
-                        flames.push(flame);
+                        const p = origin.clone().add(dir.clone().multiplyScalar(length * t));
+                        const spread = 0.25 + t * 1.0;
+                        p.x += (Math.random() - 0.5) * spread;
+                        p.y += (Math.random() - 0.5) * spread;
+                        p.z += (Math.random() - 0.5) * spread;
+                        const f = new THREE.Mesh(new THREE.SphereGeometry(0.18 + Math.random() * 0.28, 7, 7),
+                            new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xff4500 : 0xffd21f, transparent: true, opacity: 0.9 }));
+                        f.position.copy(p);
+                        scene.add(f);
+                        flameParticles.push({ mesh: f, t, phase: Math.random() * Math.PI * 2 });
                     }
 
-                    const hitDist = origin.distanceTo(playerPos);
-                    const playerHit = hitDist < distance + 1.5;
-                    if (playerHit) {
-                        playerHealth -= 28;
+                    const start = performance.now();
+                    const duration = 1800;
+                    function animateBreath(now) {
+                        const elapsed = now - start;
+                        if (elapsed >= duration) {
+                            scene.remove(outer); scene.remove(inner);
+                            flameParticles.forEach(p => scene.remove(p.mesh));
+                            return;
+                        }
+                        outer.scale.x = 1 + Math.sin(now * 0.018) * 0.08;
+                        inner.scale.x = 1 + Math.sin(now * 0.025 + 1) * 0.12;
+                        flameParticles.forEach(p => {
+                            const wobble = Math.sin(now * 0.02 + p.phase) * (0.15 + p.t * 0.6);
+                            p.mesh.position.x += wobble * 0.01;
+                            p.mesh.position.y += Math.cos(now * 0.018 + p.phase) * 0.008;
+                        });
+                        requestAnimationFrame(animateBreath);
+                    }
+                    requestAnimationFrame(animateBreath);
+
+                    // 불줄기 중심축에 가까우면 지속시간 동안 1회 피해
+                    const toPlayer = new THREE.Vector3().subVectors(camera.position, origin);
+                    const along = toPlayer.dot(dir);
+                    const perpendicular = toPlayer.clone().sub(dir.clone().multiplyScalar(along)).length();
+                    if (along > 0 && along < length && perpendicular < 2.0) {
+                        playerHealth -= 32;
                         updateHUD();
                         if (playerHealth <= 0) endGame(false);
                     }
-
-                    setTimeout(() => {
-                        scene.remove(outer);
-                        scene.remove(inner);
-                        flames.forEach(f => scene.remove(f));
-                    }, 850);
                 }
 
-                function createShockwave(x, z) {
+                
+
+function createShockwave(x, z) {
                     const geo = new THREE.RingGeometry(0.5, 1.5, 32);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
                     const ring = new THREE.Mesh(geo, mat);
@@ -1041,6 +1089,11 @@ def main():
                     const btn = document.getElementById('game-over-btn');
 
                     if (victory) {
+                        if (!roundRewardGiven) {
+                            money += 100;
+                            roundRewardGiven = true;
+                            updateHUD();
+                        }
                         title.innerText = `라운드 ${round} 승리!`;
                         title.style.color = '#00ffcc';
                         desc.innerText = round % 5 === 0 ? '보스를 물리쳤습니다!' : '적을 모두 제압했습니다!';
