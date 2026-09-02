@@ -835,7 +835,8 @@ def main():
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 950 + round * 300;
+                    // 보스 체력 늘림 (기존 950 + round * 300 -> 2500 + round * 500)
+                    const maxHp = 2500 + round * 500;
                     bossEnemy = { mesh: group, hp: maxHp, maxHp, speed: 3.4, damage: 18, lastAttack: 0,
                         lastSlam: performance.now(), isSlamming: false, slamPhase: 0, isBoss: true,
                         attackIndex: 0, lastBossAttack: performance.now(), attackCooldown: 4200 };
@@ -912,9 +913,7 @@ def main():
                     }
                 }
 
-                
-
-function createShockwave(x, z) {
+                function createShockwave(x, z) {
                     const geo = new THREE.RingGeometry(0.5, 1.5, 32);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
                     const ring = new THREE.Mesh(geo, mat);
