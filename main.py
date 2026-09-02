@@ -33,11 +33,13 @@ def main():
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **조작법 및 신규 기능:**
-        - **사격**: 마우스 좌클릭 / `Space` / `E` 키
-        - **전체 화면 전환**: `O` 키 또는 오른쪽 상단 버튼
+        - **사격**: 마우스 좌클릭 / `E` 키
+        - **점프**: `Space` 키
+        - **달리기**: `Shift` 키 (누르고 이동)
+        - **전체 화면 전환**: `O` 키
         - **상점 열기/닫기**: `B` 키 (산탄총 150G / 기관총 300G)
-        - **이동**: WASD | **천천히 걷기**: Shift | **재장전**: R
-        - **무기 교체**: 1, 2, 3, 4 키
+        - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4 키
+        - **보스전**: **5라운드**마다 강력한 보스 등장! (내려찍기 & 충격파 주의)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -76,6 +78,36 @@ def main():
                     text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
                     pointer-events: none;
                     z-index: 10;
+                }
+                #boss-hud {
+                    display: none;
+                    position: absolute;
+                    top: 55px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 50%;
+                    background: rgba(0, 0, 0, 0.7);
+                    border: 2px solid #ff0055;
+                    border-radius: 8px;
+                    padding: 8px 15px;
+                    text-align: center;
+                    color: #ff0055;
+                    font-weight: bold;
+                    z-index: 10;
+                }
+                #boss-hp-bar {
+                    width: 100%;
+                    height: 16px;
+                    background: #333;
+                    border-radius: 4px;
+                    margin-top: 5px;
+                    overflow: hidden;
+                }
+                #boss-hp-fill {
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg, #ff0055, #ff5500);
+                    transition: width 0.1s linear;
                 }
                 #crosshair {
                     position: absolute;
@@ -236,6 +268,12 @@ def main():
                     처치: <span id="kills">0</span> | 
                     남은 적: <span id="enemies-left">0</span>
                 </div>
+
+                <div id="boss-hud">
+                    ⚠️ 보스 : <span id="boss-title">타이탄</span>
+                    <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
+                </div>
+
                 <div id="crosshair"></div>
                 <div id="muzzle-flash-hud"></div>
                 
@@ -304,48 +342,42 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.12);
                         gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.12);
                     } else if (type === 2) {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(240, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.15);
                         gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.15);
                     } else if (type === 3) {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(120, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.25);
                         gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.25);
                     } else if (type === 4) {
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(180, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.08);
                         gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.08);
+                    } else if (type === 'slam') {
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+                        gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
                     }
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
                 }
 
                 const WEAPONS = {
-                    1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0.02, color: 0xdddddd, owned: true },
-                    2: { name: '소총', damage: 35, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, color: 0x33aa33, owned: true },
-                    3: { name: '산탄총', damage: 16, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0.1, pellets: 8, color: 0xff6600, owned: false, price: 150 },
-                    4: { name: '기관총', damage: 40, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, color: 0xffd700, owned: false, price: 300 }
+                    1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0.02, owned: true },
+                    2: { name: '소총', damage: 35, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, owned: true },
+                    3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0.1, pellets: 8, owned: false, price: 150 },
+                    4: { name: '기관총', damage: 42, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 100;
@@ -353,11 +385,20 @@ def main():
                 let isReloading = false, lastShotTime = 0;
 
                 let scene, camera, renderer, gunMesh, muzzleLight;
-                let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isWalking = false;
+                let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
+                
+                // 점프 및 중력 물리 변수
+                let playerVelocityY = 0;
+                let isGrounded = true;
+                const GRAVITY = -28.0;
+                const JUMP_FORCE = 10.0;
+                const PLAYER_HEIGHT = 1.6;
+
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], walls = [], isGameActive = false, isShopOpen = false;
+                let enemies = [], shockwaves = [], isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
+                let bossEnemy = null;
 
                 let pitch = 0, yaw = 0;
 
@@ -370,7 +411,7 @@ def main():
                     scene.fog = new THREE.FogExp2(0x050510, 0.02);
 
                     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                    camera.position.y = 1.6;
+                    camera.position.y = PLAYER_HEIGHT;
 
                     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                     scene.add(ambientLight);
@@ -556,7 +597,6 @@ def main():
                         mesh.add(line);
 
                         scene.add(mesh);
-                        walls.push(mesh);
                     };
 
                     createWall(100, 10, 2, 0, 5, -50, 0x112233);
@@ -572,18 +612,31 @@ def main():
                 function startRound() {
                     enemies.forEach(e => scene.remove(e.mesh));
                     enemies = [];
-                    playerHealth = 100;
-                    camera.position.set(0, 1.6, 40);
+                    bossEnemy = null;
                     
-                    const enemyCount = round * 2 + 1;
-                    const spawnPositions = [
-                        {x: -30, z: -30}, {x: 0, z: -35}, {x: 30, z: -30},
-                        {x: -25, z: 0}, {x: 25, z: 0}
-                    ];
+                    shockwaves.forEach(s => scene.remove(s.mesh));
+                    shockwaves = [];
 
-                    for (let i = 0; i < enemyCount; i++) {
-                        const pos = spawnPositions[i % spawnPositions.length];
-                        createEnemy(pos.x + (Math.random()*4 - 2), pos.z + (Math.random()*4 - 2));
+                    playerHealth = 100;
+                    camera.position.set(0, PLAYER_HEIGHT, 40);
+                    
+                    document.getElementById('boss-hud').style.display = 'none';
+
+                    // 5라운드 단위로 보스 생성
+                    if (round % 5 === 0) {
+                        createBossEnemy(0, -20);
+                        document.getElementById('boss-hud').style.display = 'block';
+                    } else {
+                        const enemyCount = round * 2 + 1;
+                        const spawnPositions = [
+                            {x: -30, z: -30}, {x: 0, z: -35}, {x: 30, z: -30},
+                            {x: -25, z: 0}, {x: 25, z: 0}
+                        ];
+
+                        for (let i = 0; i < enemyCount; i++) {
+                            const pos = spawnPositions[i % spawnPositions.length];
+                            createEnemy(pos.x + (Math.random()*4 - 2), pos.z + (Math.random()*4 - 2));
+                        }
                     }
                     updateHUD();
                 }
@@ -598,9 +651,9 @@ def main():
                     group.add(body);
 
                     const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+                    headGeo.translate(0, 1.8, 0);
                     const headMat = new THREE.MeshStandardMaterial({ color: 0xffff00 });
                     const head = new THREE.Mesh(headGeo, headMat);
-                    head.position.y = 1.8;
                     group.add(head);
 
                     group.position.set(x, 0, z);
@@ -612,8 +665,71 @@ def main():
                         maxHp: 50 + (round * 10),
                         speed: 3 + (Math.random() * 1.5),
                         damage: 10,
-                        lastAttack: 0
+                        lastAttack: 0,
+                        isBoss: false
                     });
+                }
+
+                function createBossEnemy(x, z) {
+                    const group = new THREE.Group();
+
+                    // 보스 거대 본체 (스케일 3.5배)
+                    const bodyGeo = new THREE.BoxGeometry(3.0, 4.5, 2.0);
+                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xaa0033, metalness: 0.8, roughness: 0.2 });
+                    const body = new THREE.Mesh(bodyGeo, bodyMat);
+                    body.position.y = 3.5;
+                    group.add(body);
+
+                    const headGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+                    headGeo.translate(0, 6.5, 0);
+                    const headMat = new THREE.MeshStandardMaterial({ color: 0xff3300 });
+                    const head = new THREE.Mesh(headGeo, headMat);
+                    group.add(head);
+
+                    // 보스 발광 오라
+                    const auraLight = new THREE.PointLight(0xff0055, 3, 15);
+                    auraLight.position.set(0, 4, 0);
+                    group.add(auraLight);
+
+                    group.position.set(x, 0, z);
+                    scene.add(group);
+
+                    const maxHp = 1200 + (round * 400); // 튼튼한 체력
+                    bossEnemy = {
+                        mesh: group,
+                        hp: maxHp,
+                        maxHp: maxHp,
+                        speed: 4.5,
+                        damage: 25,
+                        lastAttack: 0,
+                        lastSlam: performance.now(),
+                        isSlamming: false,
+                        slamPhase: 0, // 1: 상승, 2: 강하
+                        isBoss: true
+                    };
+
+                    enemies.push(bossEnemy);
+                }
+
+                function createShockwave(x, z) {
+                    const geo = new THREE.RingGeometry(0.5, 1.5, 32);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                    const ring = new THREE.Mesh(geo, mat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.set(x, 0.1, z);
+                    scene.add(ring);
+
+                    shockwaves.push({
+                        mesh: ring,
+                        radius: 1.5,
+                        maxRadius: 18.0,
+                        speed: 22.0,
+                        originX: x,
+                        originZ: z,
+                        hasHitPlayer: false
+                    });
+
+                    playGunSound('slam');
                 }
 
                 function onKeyDown(e) {
@@ -628,9 +744,14 @@ def main():
                         case 'KeyS': moveBackward = true; break;
                         case 'KeyA': moveLeft = true; break;
                         case 'KeyD': moveRight = true; break;
-                        case 'ShiftLeft': isWalking = true; break;
-                        case 'KeyR': reload(); break;
+                        case 'ShiftLeft': isSprinting = true; break; // 달리기
                         case 'Space': 
+                            if (isGrounded) {
+                                playerVelocityY = JUMP_FORCE;
+                                isGrounded = false;
+                            }
+                            break;
+                        case 'KeyR': reload(); break;
                         case 'KeyE': shoot(); break;
                         case 'Digit1': switchWeapon(1); break;
                         case 'Digit2': switchWeapon(2); break;
@@ -645,7 +766,7 @@ def main():
                         case 'KeyS': moveBackward = false; break;
                         case 'KeyA': moveLeft = false; break;
                         case 'KeyD': moveRight = false; break;
-                        case 'ShiftLeft': isWalking = false; break;
+                        case 'ShiftLeft': isSprinting = false; break;
                     }
                 }
 
@@ -719,11 +840,13 @@ def main():
                             const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh));
                             if (enemyObj) {
                                 enemyObj.hp -= w.damage;
+                                updateHUD();
                                 if (enemyObj.hp <= 0) {
                                     scene.remove(enemyObj.mesh);
                                     enemies = enemies.filter(e => e !== enemyObj);
                                     kills++;
-                                    money += 25;
+                                    money += enemyObj.isBoss ? 500 : 25;
+                                    if (enemyObj.isBoss) bossEnemy = null;
                                     updateHUD();
                                     if (enemies.length === 0) endGame(true);
                                 }
@@ -740,6 +863,11 @@ def main():
                     document.getElementById('ammo').innerText = `${currentAmmo} / ${WEAPONS[currentWeaponId].magSize}`;
                     document.getElementById('kills').innerText = kills;
                     document.getElementById('enemies-left').innerText = enemies.length;
+
+                    if (bossEnemy) {
+                        const bossPct = Math.max(0, (bossEnemy.hp / bossEnemy.maxHp) * 100);
+                        document.getElementById('boss-hp-fill').style.width = `${bossPct}%`;
+                    }
 
                     const healthElem = document.getElementById('health');
                     if (playerHealth < 30) healthElem.style.color = '#ff3333';
@@ -759,7 +887,7 @@ def main():
                     if (victory) {
                         title.innerText = `라운드 ${round} 승리!`;
                         title.style.color = '#00ffcc';
-                        desc.innerText = '적을 모두 제압했습니다!';
+                        desc.innerText = round % 5 === 0 ? '보스를 물리쳤습니다!' : '적을 모두 제압했습니다!';
                         btn.innerText = '다음 라운드 진입';
                     } else {
                         title.innerText = '패배했습니다...';
@@ -793,6 +921,17 @@ def main():
                     prevTime = time;
 
                     if (isGameActive && !isShopOpen) {
+                        // 1. 플레이어 Y축 물리 (점프/중력)
+                        playerVelocityY += GRAVITY * delta;
+                        camera.position.y += playerVelocityY * delta;
+
+                        if (camera.position.y <= PLAYER_HEIGHT) {
+                            camera.position.y = PLAYER_HEIGHT;
+                            playerVelocityY = 0;
+                            isGrounded = true;
+                        }
+
+                        // 2. 플레이어 평면 이동 (Shift = 달리기)
                         velocity.x -= velocity.x * 10.0 * delta;
                         velocity.z -= velocity.z * 10.0 * delta;
 
@@ -800,34 +939,101 @@ def main():
                         direction.x = Number(moveRight) - Number(moveLeft);
                         direction.normalize();
 
-                        const moveSpeed = isWalking ? 15.0 : 35.0;
+                        const moveSpeed = isSprinting ? 65.0 : 35.0; // Shift 누르면 빠르게 이동
                         if (moveForward || moveBackward) velocity.z -= direction.z * moveSpeed * delta;
                         if (moveLeft || moveRight) velocity.x -= direction.x * moveSpeed * delta;
 
                         camera.translateX(-velocity.x * delta);
                         camera.translateZ(velocity.z * delta);
-                        camera.position.y = 1.6;
 
                         const playerPos = camera.position;
-                        
+
+                        // 3. 보스 패턴 및 적 AI 로직
                         enemies.forEach(enemy => {
                             const enemyPos = enemy.mesh.position;
-                            const dist = enemyPos.distanceTo(playerPos);
 
-                            if (dist > 1.8) {
-                                const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
-                                enemyPos.x += dir.x * enemy.speed * delta;
-                                enemyPos.z += dir.z * enemy.speed * delta;
-                                enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                            if (enemy.isBoss) {
+                                // 보스 스킬 : 내려찍기 파동 공격 패턴
+                                if (!enemy.isSlamming && time - enemy.lastSlam > 5000) {
+                                    enemy.isSlamming = true;
+                                    enemy.slamPhase = 1; // 점프 시도
+                                    enemy.lastSlam = time;
+                                }
+
+                                if (enemy.isSlamming) {
+                                    if (enemy.slamPhase === 1) {
+                                        enemyPos.y += 18 * delta; // 높이 도약
+                                        if (enemyPos.y >= 8.0) {
+                                            enemy.slamPhase = 2; // 내리찍기
+                                        }
+                                    } else if (enemy.slamPhase === 2) {
+                                        enemyPos.y -= 40 * delta; // 강하
+                                        if (enemyPos.y <= 0) {
+                                            enemyPos.y = 0;
+                                            enemy.isSlamming = false;
+                                            // 지면 내려찍을 때 파동 발생
+                                            createShockwave(enemyPos.x, enemyPos.z);
+                                        }
+                                    }
+                                } else {
+                                    // 일반 보스 추적 이동
+                                    const dist = enemyPos.distanceTo(playerPos);
+                                    if (dist > 3.0) {
+                                        const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
+                                        enemyPos.x += dir.x * enemy.speed * delta;
+                                        enemyPos.z += dir.z * enemy.speed * delta;
+                                        enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                                    } else {
+                                        if (time - enemy.lastAttack > 800) {
+                                            playerHealth -= enemy.damage;
+                                            enemy.lastAttack = time;
+                                            updateHUD();
+                                            if (playerHealth <= 0) endGame(false);
+                                        }
+                                    }
+                                }
                             } else {
-                                if (time - enemy.lastAttack > 1000) {
-                                    playerHealth -= enemy.damage;
-                                    enemy.lastAttack = time;
+                                // 일반 적 추적
+                                const dist = enemyPos.distanceTo(playerPos);
+                                if (dist > 1.8) {
+                                    const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
+                                    enemyPos.x += dir.x * enemy.speed * delta;
+                                    enemyPos.z += dir.z * enemy.speed * delta;
+                                    enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                                } else {
+                                    if (time - enemy.lastAttack > 1000) {
+                                        playerHealth -= enemy.damage;
+                                        enemy.lastAttack = time;
+                                        updateHUD();
+                                        if (playerHealth <= 0) endGame(false);
+                                    }
+                                }
+                            }
+                        });
+
+                        // 4. 충격파(파동) 애니메이션 & 데미지 판정
+                        for (let i = shockwaves.length - 1; i >= 0; i--) {
+                            const wave = shockwaves[i];
+                            wave.radius += wave.speed * delta;
+                            wave.mesh.scale.set(wave.radius, wave.radius, 1);
+                            wave.mesh.material.opacity = 1 - (wave.radius / wave.maxRadius);
+
+                            // 충격파 데미지 (플레이어가 공중에 떠 있으면 피할 수 있음)
+                            const distToPlayer = Math.hypot(playerPos.x - wave.originX, playerPos.z - wave.originZ);
+                            if (!wave.hasHitPlayer && Math.abs(distToPlayer - wave.radius) < 1.8) {
+                                if (camera.position.y < PLAYER_HEIGHT + 1.2) { // 바닥에 있으면 맞음
+                                    playerHealth -= 35;
+                                    wave.hasHitPlayer = true;
                                     updateHUD();
                                     if (playerHealth <= 0) endGame(false);
                                 }
                             }
-                        });
+
+                            if (wave.radius >= wave.maxRadius) {
+                                scene.remove(wave.mesh);
+                                shockwaves.splice(i, 1);
+                            }
+                        }
                     }
                     renderer.render(scene, camera);
                 }
