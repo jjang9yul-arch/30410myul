@@ -40,10 +40,10 @@ def main():
         - **상점 열기/닫기**: `B` 키
           - 🧪 체력 포션 (50G): HP +20 회복
           - 💥 산탄총 (150G) / 🔫 기관총 (300G) / 🚀 바주카포 (600G)
-          - ⚡ **신규 무기** 레이저총 (1,200G): 초고속 레이저 광선 사격
+          - ⚡ 레이저총 (1,200G): 초고속 레이저 광선 사격
         - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4, 5, 6 키
         - **5라운드 보스**: 크로노스 드래곤 타이탄
-        - **10라운드 최종 보스**: **블레이드 마스터** (속도 재조정 및 회전하는 대검 & 퍼플 아우라 비주얼 강화)
+        - **10라운드 최종 보스**: **블레이드 마스터** (기 모으기 후 돌진 & 회전 검기 패턴 포함)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -309,14 +309,14 @@ def main():
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ffd700;">🔫 기관총 (LMG)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 (데미지: 8 조정) | 탄창: 100발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 (데미지: 8) | 탄창: 100발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 300G</p>
                         <button id="buy-lmg-btn" class="buy-btn" onclick="buyWeapon(4)">기관총 구매 (300G)</button>
                     </div>
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ff3300;">🚀 바주카포 (Bazooka)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">강력한 화력! (데미지: 180 상향) | 탄창: 1발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">강력한 화력! (데미지: 180) | 탄창: 1발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 600G</p>
                         <button id="buy-bazooka-btn" class="buy-btn" onclick="buyWeapon(5)">바주카포 구매 (600G)</button>
                     </div>
@@ -381,28 +381,28 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.25);
                         gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                    } else if (type === 4) { // 기관총
+                    } else if (type === 4) {
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(180, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.08);
                         gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-                    } else if (type === 5) { // 바주카포
+                    } else if (type === 5) {
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(90, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(15, audioCtx.currentTime + 0.6);
                         gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-                    } else if (type === 6) { // 레이저총 전용 특수 사운드 (주파수 급감 효과)
+                    } else if (type === 6) {
                         osc.type = 'sine';
                         osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.18);
                         gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
-                    } else if (type === 'slam' || type === 'slash') {
+                    } else if (type === 'slam' || type === 'slash' || type === 'dash') {
                         osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(140, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.4);
+                        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.4);
                         gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
                     }
@@ -416,9 +416,9 @@ def main():
                     1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0.02, owned: true },
                     2: { name: '소총', damage: 55, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, owned: true },
                     3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0.1, pellets: 8, owned: false, price: 150 },
-                    4: { name: '기관총', damage: 8, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 }, // 기관총 데미지 8로 너프
-                    5: { name: '바주카포', damage: 180, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0.15, owned: false, price: 600 }, // 바주카포 데미지 180으로 상향
-                    6: { name: '레이저총', damage: 50, range: 120, fireRate: 150, magSize: 15, reloadTime: 1800, recoil: 0.01, owned: false, price: 1200 } // 레이저총 추가
+                    4: { name: '기관총', damage: 8, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 },
+                    5: { name: '바주카포', damage: 180, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0.15, owned: false, price: 600 },
+                    6: { name: '레이저총', damage: 50, range: 120, fireRate: 150, magSize: 15, reloadTime: 1800, recoil: 0.01, owned: false, price: 1200 }
                 };
 
                 let round = 1, kills = 0, money = 1500, playerHealth = 150, maxPlayerHealth = 150;
@@ -531,7 +531,7 @@ def main():
 
                     const gunGroup = new THREE.Group();
 
-                    if (currentWeaponId === 6) { // 레이저총 3D 모델
+                    if (currentWeaponId === 6) {
                         const barrelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.9, 12);
                         const barrelMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.9, roughness: 0.1, emissive: 0x00f0ff, emissiveIntensity: 0.5 });
                         const barrel = new THREE.Mesh(barrelGeo, barrelMat);
@@ -545,7 +545,7 @@ def main():
 
                         gunGroup.add(barrel);
                         gunGroup.add(ring);
-                    } else if (currentWeaponId === 5) { // 바주카포
+                    } else if (currentWeaponId === 5) {
                         const tubeGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.1, 12);
                         const tubeMat = new THREE.MeshStandardMaterial({ color: 0x223322, metalness: 0.8, roughness: 0.3 });
                         const tube = new THREE.Mesh(tubeGeo, tubeMat);
@@ -805,7 +805,6 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
-                // 10라운드 개편된 소드마스터 (보스)
                 function createSwordBossEnemy(x, z) {
                     const group = new THREE.Group();
 
@@ -814,7 +813,6 @@ def main():
                     const swordGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.0, emissive: 0xffd700, emissiveIntensity: 0.6 });
                     const swordCyanMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 1.0, roughness: 0.0, emissive: 0x00f0ff, emissiveIntensity: 0.6 });
 
-                    // 본체 및 퍼플 회전 아우라 이펙트
                     const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1.0), armorMat);
                     torso.position.y = 2.5;
                     group.add(torso);
@@ -827,7 +825,6 @@ def main():
                     aura.position.y = 2.5;
                     group.add(aura);
 
-                    // 회전하는 2개의 화려한 대검 (골드/사이언 이펙트)
                     const swordsGroup = new THREE.Group();
                     
                     const sword1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 4.0, 0.4), swordGoldMat);
@@ -850,13 +847,12 @@ def main():
                         auraMesh: aura,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 1.8, // 이동 속도 하향 조율 (천천히 다가옴)
+                        speed: 1.8,
                         damage: 25,
                         lastAttack: 0,
                         isBoss: true,
                         bossType: 'blade',
-                        angle: 0,
-                        state: 'idle',
+                        state: 'walk', // 'walk', 'charge', 'dash'
                         stateTimer: 0,
                         dashTarget: new THREE.Vector3(),
                         lastBossAttack: performance.now(),
@@ -1144,24 +1140,63 @@ def main():
                                 if (enemy.bossType === 'blade') {
                                     enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
                                     
-                                    // 대검 및 아우라 회전 비주얼 이펙트
+                                    // 대검 및 아우라 회전
                                     if (enemy.swordsGroup) {
-                                        enemy.swordsGroup.rotation.y += 4.0 * delta;
+                                        const rotSpeed = enemy.state === 'charge' ? 12.0 : 4.0;
+                                        enemy.swordsGroup.rotation.y += rotSpeed * delta;
                                     }
                                     if (enemy.auraMesh) {
                                         enemy.auraMesh.rotation.z += 2.0 * delta;
                                     }
 
-                                    const dist = enemyPos.distanceTo(playerPos);
-                                    if (dist > 3.0) {
-                                        const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
-                                        enemyPos.x += dir.x * enemy.speed * delta; // 느려진 보스 이동 속도
-                                        enemyPos.z += dir.z * enemy.speed * delta;
-                                    }
+                                    // 소드마스터 상태 머신: walk -> charge (기 모으기) -> dash (돌진)
+                                    if (enemy.state === 'walk') {
+                                        const dist = enemyPos.distanceTo(playerPos);
+                                        if (dist > 3.0) {
+                                            const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
+                                            enemyPos.x += dir.x * enemy.speed * delta;
+                                            enemyPos.z += dir.z * enemy.speed * delta;
+                                        }
 
-                                    if (time - enemy.lastBossAttack > enemy.attackCooldown) {
-                                        enemy.lastBossAttack = time;
-                                        createSwordWave(enemy); // 회전 검기 스킬
+                                        // 일정 시간 주기로 기 모으기 진입
+                                        if (time - enemy.lastBossAttack > enemy.attackCooldown) {
+                                            enemy.state = 'charge';
+                                            enemy.stateTimer = time;
+                                            enemy.auraMesh.material.color.setHex(0xff0055); // 기 모을 때 붉은 아우라
+                                            createSwordWave(enemy); // 기 모으기 시작 시 검기 발사
+                                        }
+                                    } else if (enemy.state === 'charge') {
+                                        // 1.2초간 제자리에서 기를 모음 (대검이 빠르게 회전)
+                                        if (time - enemy.stateTimer > 1200) {
+                                            enemy.state = 'dash';
+                                            enemy.stateTimer = time;
+                                            enemy.dashTarget.copy(playerPos); // 돌진 타겟 설정
+                                            playGunSound('dash');
+                                        }
+                                    } else if (enemy.state === 'dash') {
+                                        // 타겟 지점을 향해 30의 속도로 초고속 돌진
+                                        const dir = new THREE.Vector3().subVectors(enemy.dashTarget, enemyPos);
+                                        dir.y = 0;
+                                        const distToTarget = dir.length();
+                                        dir.normalize();
+
+                                        const dashSpeed = 30.0;
+                                        enemyPos.x += dir.x * dashSpeed * delta;
+                                        enemyPos.z += dir.z * dashSpeed * delta;
+
+                                        // 플레이어와 충돌 체크 (돌진 피해)
+                                        if (enemyPos.distanceTo(playerPos) < 2.5) {
+                                            playerHealth -= 40; // 돌진 적중 시 큰 데미지
+                                            updateHUD();
+                                            if (playerHealth <= 0) endGame(false);
+                                        }
+
+                                        // 돌진 종료 조건 (목적지 도달 또는 0.8초 경과)
+                                        if (distToTarget < 1.0 || time - enemy.stateTimer > 800) {
+                                            enemy.state = 'walk';
+                                            enemy.lastBossAttack = time;
+                                            enemy.auraMesh.material.color.setHex(0xa020f0); // 원래 보라색 복구
+                                        }
                                     }
                                 }
                             } else {
@@ -1182,7 +1217,7 @@ def main():
                             }
                         });
 
-                        // 검기 스킬 이동 및 충돌
+                        // 검기 이동 및 충돌
                         for (let i = swordWaves.length - 1; i >= 0; i--) {
                             const sw = swordWaves[i];
                             sw.mesh.position.add(sw.direction.clone().multiplyScalar(sw.speed * delta));
