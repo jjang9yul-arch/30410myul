@@ -714,7 +714,7 @@ def main():
                     const hornMat = new THREE.MeshStandardMaterial({ color: 0xf0a34a, metalness: 0.5, roughness: 0.25, emissive: 0x401000, emissiveIntensity: 0.3 });
 
                     // 몸통
-                    const body = new THREE.Mesh(new THREE.CapsuleGeometry(2.5, 3.2, 6, 12), armorMat);
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 12), armorMat);
                     body.position.y = 3.7;
                     body.scale.set(1.0, 1.15, 0.9);
                     group.add(body);
