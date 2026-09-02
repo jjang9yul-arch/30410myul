@@ -37,10 +37,13 @@ def main():
         - **점프**: `Space` 키 | **달리기**: `Shift` 키
         - **라운드 스킵**: `M` 키 (즉시 다음 라운드로 이동)
         - **전체 화면 전환**: `O` 키
-        - **상점 열기/닫기**: `B` 키 (산탄총 150G / 기관총 300G / 바주카포 600G)
-        - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4, 5 키
-        - **5라운드 보스**: 크로노스 드래곤 타이탄 (내려찍기 & 불 브레스)
-        - **10라운드 최종 보스**: 블레이드 마스터 (기 모아 돌진 & 검기 베기)
+        - **상점 열기/닫기**: `B` 키
+          - 🧪 체력 포션 (50G): HP +20 회복
+          - 💥 산탄총 (150G) / 🔫 기관총 (300G) / 🚀 바주카포 (600G)
+          - ⚡ **신규 무기** 레이저총 (1,200G): 초고속 레이저 광선 사격
+        - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4, 5, 6 키
+        - **5라운드 보스**: 크로노스 드래곤 타이탄
+        - **10라운드 최종 보스**: **블레이드 마스터** (속도 재조정 및 회전하는 대검 & 퍼플 아우라 비주얼 강화)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -107,7 +110,7 @@ def main():
                 #boss-hp-fill {
                     width: 100%;
                     height: 100%;
-                    background: linear-gradient(90deg, #ff0055, #ff5500);
+                    background: linear-gradient(90deg, #a020f0, #ff0055);
                     transition: width 0.1s linear;
                 }
                 #crosshair {
@@ -147,7 +150,7 @@ def main():
                     width: 60px;
                     height: 60px;
                     transform: translate(-50%, -50%);
-                    background: radial-gradient(circle, rgba(255,230,120,0.8) 0%, rgba(255,100,0,0.4) 40%, rgba(0,0,0,0) 70%);
+                    background: radial-gradient(circle, rgba(0,255,255,0.8) 0%, rgba(160,32,240,0.4) 40%, rgba(0,0,0,0) 70%);
                     pointer-events: none;
                     z-index: 9;
                     display: none;
@@ -212,7 +215,9 @@ def main():
                     border-radius: 12px;
                     color: white;
                     z-index: 25;
-                    min-width: 360px;
+                    min-width: 380px;
+                    max-height: 80vh;
+                    overflow-y: auto;
                     text-align: center;
                     cursor: default;
                 }
@@ -263,7 +268,7 @@ def main():
                 <div id="hud">
                     라운드: <span id="round">1</span> / 10 | 
                     체력: <span id="health" style="color: #00ffcc;">150</span> | 
-                    골드: <span id="money" style="color:#ffd700;">0</span>G | 
+                    골드: <span id="money" style="color:#ffd700;">1500</span>G | 
                     무기: <span id="weapon">권총</span> | 
                     탄약: <span id="ammo">12 / 12</span> | 
                     처치: <span id="kills">0</span> | 
@@ -284,10 +289,17 @@ def main():
                 </div>
 
                 <div id="shop-modal">
-                    <h2 style="color: #ffd700; margin-top:0;">무기 상점</h2>
-                    <p>현재 보유 골드: <span id="shop-money" style="color: #ffd700; font-weight: bold;">0</span>G</p>
+                    <h2 style="color: #ffd700; margin-top:0;">상점 & 연구소</h2>
+                    <p>보유 골드: <span id="shop-money" style="color: #ffd700; font-weight: bold;">1500</span>G</p>
                     <hr style="border-color: #444;">
                     
+                    <div class="buy-item">
+                        <h4 style="margin: 0; color: #00ff88;">🧪 체력 포션 (Potion) - 키보드 [H]</h4>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">체력을 20 회복합니다.</p>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 50G</p>
+                        <button id="buy-potion-btn" class="buy-btn" onclick="buyPotion()">체력 포션 구매 (50G)</button>
+                    </div>
+
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ff8800;">💥 산탄총 (Shotgun)</h4>
                         <p style="font-size: 12px; color: #aaa; margin: 2px 0;">근거리 8발 동시 발사 | 탄창: 6발</p>
@@ -297,16 +309,23 @@ def main():
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ffd700;">🔫 기관총 (LMG)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 (데미지: 65) | 탄창: 100발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 (데미지: 8 조정) | 탄창: 100발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 300G</p>
                         <button id="buy-lmg-btn" class="buy-btn" onclick="buyWeapon(4)">기관총 구매 (300G)</button>
                     </div>
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ff3300;">🚀 바주카포 (Bazooka)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">기관총의 3배 화력! (데미지: 195) | 탄창: 1발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">강력한 화력! (데미지: 180 상향) | 탄창: 1발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 600G</p>
                         <button id="buy-bazooka-btn" class="buy-btn" onclick="buyWeapon(5)">바주카포 구매 (600G)</button>
+                    </div>
+
+                    <div class="buy-item">
+                        <h4 style="margin: 0; color: #00f0ff;">⚡ 레이저총 (Laser Cannon) - 키보드 [L]</h4>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">관통형 이펙트 레이저 사격 (데미지: 50) | 탄창: 15발</p>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,200G</p>
+                        <button id="buy-laser-btn" class="buy-btn" onclick="buyWeapon(6)">레이저총 구매 (1200G)</button>
                     </div>
 
                     <button onclick="toggleShop()" style="margin-top: 10px; padding: 6px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
@@ -362,18 +381,24 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.25);
                         gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                    } else if (type === 4) {
+                    } else if (type === 4) { // 기관총
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(180, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.08);
-                        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-                    } else if (type === 5) { // 바주카포 음향
+                    } else if (type === 5) { // 바주카포
                         osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+                        osc.frequency.setValueAtTime(90, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(15, audioCtx.currentTime + 0.6);
                         gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                    } else if (type === 6) { // 레이저총 전용 특수 사운드 (주파수 급감 효과)
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.18);
+                        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
                     } else if (type === 'slam' || type === 'slash') {
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(140, audioCtx.currentTime);
@@ -391,11 +416,12 @@ def main():
                     1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0.02, owned: true },
                     2: { name: '소총', damage: 55, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, owned: true },
                     3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0.1, pellets: 8, owned: false, price: 150 },
-                    4: { name: '기관총', damage: 65, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 },
-                    5: { name: '바주카포', damage: 195, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0.15, owned: false, price: 600 }
+                    4: { name: '기관총', damage: 8, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 }, // 기관총 데미지 8로 너프
+                    5: { name: '바주카포', damage: 180, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0.15, owned: false, price: 600 }, // 바주카포 데미지 180으로 상향
+                    6: { name: '레이저총', damage: 50, range: 120, fireRate: 150, magSize: 15, reloadTime: 1800, recoil: 0.01, owned: false, price: 1200 } // 레이저총 추가
                 };
 
-                let round = 1, kills = 0, money = 0, playerHealth = 150;
+                let round = 1, kills = 0, money = 1500, playerHealth = 150, maxPlayerHealth = 150;
                 let isMouseDown = false;
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
@@ -505,7 +531,21 @@ def main():
 
                     const gunGroup = new THREE.Group();
 
-                    if (currentWeaponId === 5) { // 바주카포 모델링
+                    if (currentWeaponId === 6) { // 레이저총 3D 모델
+                        const barrelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.9, 12);
+                        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 0.9, roughness: 0.1, emissive: 0x00f0ff, emissiveIntensity: 0.5 });
+                        const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+                        barrel.rotation.x = Math.PI / 2;
+                        barrel.position.set(0.2, -0.18, -0.5);
+
+                        const ringGeo = new THREE.TorusGeometry(0.12, 0.02, 8, 16);
+                        const ringMat = new THREE.MeshBasicMaterial({ color: 0xa020f0 });
+                        const ring = new THREE.Mesh(ringGeo, ringMat);
+                        ring.position.set(0.2, -0.18, -0.6);
+
+                        gunGroup.add(barrel);
+                        gunGroup.add(ring);
+                    } else if (currentWeaponId === 5) { // 바주카포
                         const tubeGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.1, 12);
                         const tubeMat = new THREE.MeshStandardMaterial({ color: 0x223322, metalness: 0.8, roughness: 0.3 });
                         const tube = new THREE.Mesh(tubeGeo, tubeMat);
@@ -588,27 +628,31 @@ def main():
                     document.getElementById('shop-money').innerText = money;
                     
                     const buySgBtn = document.getElementById('buy-sg-btn');
-                    if (WEAPONS[3].owned) {
-                        buySgBtn.innerText = '보유 중 (3번 키로 장착)';
-                        buySgBtn.disabled = true;
-                    } else {
-                        buySgBtn.disabled = money < WEAPONS[3].price;
-                    }
+                    buySgBtn.disabled = WEAPONS[3].owned || money < WEAPONS[3].price;
+                    if (WEAPONS[3].owned) buySgBtn.innerText = '보유 중 (3번 키)';
 
                     const buyLmgBtn = document.getElementById('buy-lmg-btn');
-                    if (WEAPONS[4].owned) {
-                        buyLmgBtn.innerText = '보유 중 (4번 키로 장착)';
-                        buyLmgBtn.disabled = true;
-                    } else {
-                        buyLmgBtn.disabled = money < WEAPONS[4].price;
-                    }
+                    buyLmgBtn.disabled = WEAPONS[4].owned || money < WEAPONS[4].price;
+                    if (WEAPONS[4].owned) buyLmgBtn.innerText = '보유 중 (4번 키)';
 
                     const buyBazookaBtn = document.getElementById('buy-bazooka-btn');
-                    if (WEAPONS[5].owned) {
-                        buyBazookaBtn.innerText = '보유 중 (5번 키로 장착)';
-                        buyBazookaBtn.disabled = true;
-                    } else {
-                        buyBazookaBtn.disabled = money < WEAPONS[5].price;
+                    buyBazookaBtn.disabled = WEAPONS[5].owned || money < WEAPONS[5].price;
+                    if (WEAPONS[5].owned) buyBazookaBtn.innerText = '보유 중 (5번 키)';
+
+                    const buyLaserBtn = document.getElementById('buy-laser-btn');
+                    buyLaserBtn.disabled = WEAPONS[6].owned || money < WEAPONS[6].price;
+                    if (WEAPONS[6].owned) buyLaserBtn.innerText = '보유 중 (6번 키)';
+
+                    const buyPotionBtn = document.getElementById('buy-potion-btn');
+                    buyPotionBtn.disabled = money < 50 || playerHealth >= maxPlayerHealth;
+                }
+
+                function buyPotion() {
+                    if (money >= 50 && playerHealth < maxPlayerHealth) {
+                        money -= 50;
+                        playerHealth = Math.min(maxPlayerHealth, playerHealth + 20);
+                        updateHUD();
+                        toggleShop();
                     }
                 }
 
@@ -686,7 +730,7 @@ def main():
                     } else if (round === 10) {
                         createSwordBossEnemy(0, -20);
                         document.getElementById('boss-hud').style.display = 'block';
-                        document.getElementById('boss-title').innerText = "블레이드 마스터";
+                        document.getElementById('boss-title').innerText = "소드마스터 (블레이드 마스터)";
                     } else {
                         const enemyCount = round * 2 + 1;
                         const spawnPositions = [
@@ -744,86 +788,12 @@ def main():
                     });
                 }
 
-                // 5라운드 기존 보스 (크로노스 드래곤)
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
-
-                    const skinMat = new THREE.MeshStandardMaterial({ color: 0x6b1020, metalness: 0.25, roughness: 0.5, emissive: 0x220006, emissiveIntensity: 0.25 });
-                    const scaleMat = new THREE.MeshStandardMaterial({ color: 0x9d2034, metalness: 0.15, roughness: 0.62 });
-                    const wingMat = new THREE.MeshStandardMaterial({ color: 0x260812, metalness: 0.1, roughness: 0.7, side: THREE.DoubleSide });
-                    const hornMat = new THREE.MeshStandardMaterial({ color: 0xc98742, metalness: 0.55, roughness: 0.28 });
-                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffff55 });
-                    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff6a00 });
-
+                    const skinMat = new THREE.MeshStandardMaterial({ color: 0x6b1020, metalness: 0.25, roughness: 0.5 });
                     const body = new THREE.Mesh(new THREE.SphereGeometry(3.0, 20, 14), skinMat);
                     body.position.set(0, 4.0, 0);
-                    body.scale.set(1.15, 1.0, 1.55);
                     group.add(body);
-
-                    const chest = new THREE.Mesh(new THREE.SphereGeometry(2.15, 16, 12), scaleMat);
-                    chest.position.set(0, 4.15, -1.65);
-                    chest.scale.set(1.0, 1.05, 0.75);
-                    group.add(chest);
-
-                    const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.65, 3.4, 10), skinMat);
-                    neck.position.set(0, 6.25, -0.95);
-                    neck.rotation.x = -0.15;
-                    group.add(neck);
-
-                    const head = new THREE.Mesh(new THREE.SphereGeometry(1.75, 16, 12), skinMat);
-                    head.position.set(0, 8.0, -1.75);
-                    head.scale.set(1.18, 0.88, 1.35);
-                    group.add(head);
-
-                    const jaw = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.55, 2.25), scaleMat);
-                    jaw.position.set(0, 7.45, -2.55);
-                    jaw.rotation.x = -0.08;
-                    group.add(jaw);
-
-                    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.4, 8), scaleMat);
-                    nose.rotation.x = -Math.PI / 2;
-                    nose.position.set(0, 7.85, -3.05);
-                    group.add(nose);
-
-                    [-1, 1].forEach(side => {
-                        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
-                        eye.position.set(side * 0.72, 8.18, -3.0);
-                        group.add(eye);
-                        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.45), skinMat);
-                        brow.position.set(side * 0.7, 8.48, -2.82);
-                        brow.rotation.z = side * -0.22;
-                        group.add(brow);
-                    });
-
-                    [-1, 1].forEach(side => {
-                        for (let k = 0; k < 2; k++) {
-                            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.32 - k * 0.06, 2.2 - k * 0.25, 8), hornMat);
-                            horn.position.set(side * (0.8 + k * 0.38), 9.0 - k * 0.15, -1.2 + k * 0.15);
-                            horn.rotation.z = side * (0.32 + k * 0.1);
-                            horn.rotation.x = -0.25;
-                            group.add(horn);
-                        }
-                    });
-
-                    [-1, 1].forEach(side => {
-                        const membrane = new THREE.Mesh(new THREE.ConeGeometry(4.6, 7.2, 4, 1, true), wingMat);
-                        membrane.position.set(side * 3.5, 6.0, 0.4);
-                        membrane.rotation.z = side * (Math.PI / 2.15);
-                        membrane.rotation.x = side * 0.08;
-                        membrane.scale.set(1.0, 1.0, 0.55);
-                        group.add(membrane);
-
-                        for (let k = 0; k < 3; k++) {
-                            const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 4.2, 6), hornMat);
-                            bone.position.set(side * (3.0 + k * 0.9), 6.0 + k * 0.65, 0.2 + k * 0.25);
-                            bone.rotation.z = side * (Math.PI / 2.3 - k * 0.12);
-                            group.add(bone);
-                        }
-                    });
-
-                    const core = new THREE.Mesh(new THREE.SphereGeometry(0.65, 12, 12), fireMat);
-                    core.position.set(0, 4.5, -2.55);
-                    group.add(core);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
@@ -835,15 +805,16 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
-                // 10라운드 신규 검사 보스 (블레이드 마스터)
+                // 10라운드 개편된 소드마스터 (보스)
                 function createSwordBossEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x111122, metalness: 0.9, roughness: 0.1 });
-                    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-                    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 1.0, roughness: 0.0, emissive: 0x00ffff, emissiveIntensity: 0.8 });
+                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x23232d, metalness: 0.9, roughness: 0.1 });
+                    const auraMat = new THREE.MeshBasicMaterial({ color: 0xa020f0, transparent: true, opacity: 0.6, wireframe: true });
+                    const swordGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.0, emissive: 0xffd700, emissiveIntensity: 0.6 });
+                    const swordCyanMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, metalness: 1.0, roughness: 0.0, emissive: 0x00f0ff, emissiveIntensity: 0.6 });
 
-                    // 신체 구조
+                    // 본체 및 퍼플 회전 아우라 이펙트
                     const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1.0), armorMat);
                     torso.position.y = 2.5;
                     group.add(torso);
@@ -852,47 +823,40 @@ def main():
                     head.position.y = 4.0;
                     group.add(head);
 
-                    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.4), glowMat);
-                    visor.position.set(0, 4.05, -0.45);
-                    group.add(visor);
-
-                    // 거대 광선검 (카타나)
-                    const swordGroup = new THREE.Group();
-                    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8), armorMat);
-                    handle.position.y = -0.6;
-                    swordGroup.add(handle);
-
-                    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.8, 0.3), bladeMat);
-                    blade.position.y = 1.8;
-                    swordGroup.add(blade);
-
-                    swordGroup.position.set(1.2, 2.5, -0.5);
-                    swordGroup.rotation.x = Math.PI / 4;
-                    group.add(swordGroup);
-
-                    // 기 오라 스피어 (비활성)
-                    const auraGeo = new THREE.SphereGeometry(3.2, 16, 16);
-                    const auraMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.0, wireframe: true });
-                    const aura = new THREE.Mesh(auraGeo, auraMat);
+                    const aura = new THREE.Mesh(new THREE.SphereGeometry(3.5, 16, 16), auraMat);
                     aura.position.y = 2.5;
                     group.add(aura);
+
+                    // 회전하는 2개의 화려한 대검 (골드/사이언 이펙트)
+                    const swordsGroup = new THREE.Group();
+                    
+                    const sword1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 4.0, 0.4), swordGoldMat);
+                    sword1.position.set(2.2, 2.5, 0);
+                    swordsGroup.add(sword1);
+
+                    const sword2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 4.0, 0.4), swordCyanMat);
+                    sword2.position.set(-2.2, 2.5, 0);
+                    swordsGroup.add(sword2);
+
+                    group.add(swordsGroup);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 6000;
+                    const maxHp = 3500;
                     bossEnemy = {
                         mesh: group,
-                        swordMesh: swordGroup,
+                        swordsGroup: swordsGroup,
                         auraMesh: aura,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 5.0,
+                        speed: 1.8, // 이동 속도 하향 조율 (천천히 다가옴)
                         damage: 25,
                         lastAttack: 0,
                         isBoss: true,
                         bossType: 'blade',
-                        state: 'idle', // 'idle', 'charging', 'dashing', 'slashing'
+                        angle: 0,
+                        state: 'idle',
                         stateTimer: 0,
                         dashTarget: new THREE.Vector3(),
                         lastBossAttack: performance.now(),
@@ -901,7 +865,6 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
-                // 검기 발사 (보스전)
                 function createSwordWave(boss) {
                     const origin = boss.mesh.position.clone().add(new THREE.Vector3(0, 2.5, 0));
                     const target = camera.position.clone();
@@ -927,69 +890,14 @@ def main():
                     playGunSound('slash');
                 }
 
-                function createFireBreath(boss) {
-                    const origin = boss.mesh.position.clone().add(new THREE.Vector3(0, 7.8, -4.0));
-                    const target = camera.position.clone();
-                    const dir = new THREE.Vector3().subVectors(target, origin).normalize();
-                    const length = 28;
-                    const center = origin.clone().add(dir.clone().multiplyScalar(length / 2));
-
-                    const outer = new THREE.Mesh(
-                        new THREE.CylinderGeometry(1.8, 0.8, length, 20, 1, true),
-                        new THREE.MeshBasicMaterial({ color: 0xff2400, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
-                    );
-                    outer.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-                    outer.position.copy(center);
-                    scene.add(outer);
-
-                    const start = performance.now();
-                    const duration = 1500;
-                    function animateBreath(now) {
-                        if (now - start >= duration) {
-                            scene.remove(outer);
-                            return;
-                        }
-                        requestAnimationFrame(animateBreath);
-                    }
-                    requestAnimationFrame(animateBreath);
-
-                    const toPlayer = new THREE.Vector3().subVectors(camera.position, origin);
-                    const along = toPlayer.dot(dir);
-                    const perpendicular = toPlayer.clone().sub(dir.clone().multiplyScalar(along)).length();
-                    if (along > 0 && along < length && perpendicular < 2.0) {
-                        playerHealth -= 32;
-                        updateHUD();
-                        if (playerHealth <= 0) endGame(false);
-                    }
-                }
-
-                function createShockwave(x, z) {
-                    const geo = new THREE.RingGeometry(0.5, 1.5, 32);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-                    const ring = new THREE.Mesh(geo, mat);
-                    ring.rotation.x = Math.PI / 2;
-                    ring.position.set(x, 0.1, z);
-                    scene.add(ring);
-
-                    shockwaves.push({
-                        mesh: ring,
-                        radius: 1.5,
-                        maxRadius: 18.0,
-                        speed: 22.0,
-                        originX: x,
-                        originZ: z,
-                        hasHitPlayer: false
-                    });
-
-                    playGunSound('slam');
-                }
-
                 function onKeyDown(e) {
                     initAudio();
                     if (!isGameActive) return;
                     if (e.code === 'KeyB') { toggleShop(); return; }
                     if (e.code === 'KeyO') { toggleFullScreen(); return; }
                     if (e.code === 'KeyM') { skipRound(); return; }
+                    if (e.code === 'KeyH') { buyPotion(); return; }
+                    if (e.code === 'KeyL') { buyWeapon(6); return; }
                     if (isShopOpen) return;
 
                     switch (e.code) {
@@ -1011,6 +919,7 @@ def main():
                         case 'Digit3': if (WEAPONS[3].owned) switchWeapon(3); break;
                         case 'Digit4': if (WEAPONS[4].owned) switchWeapon(4); break;
                         case 'Digit5': if (WEAPONS[5].owned) switchWeapon(5); break;
+                        case 'Digit6': if (WEAPONS[6].owned) switchWeapon(6); break;
                     }
                 }
 
@@ -1144,10 +1053,10 @@ def main():
                             roundRewardGiven = true;
                             updateHUD();
                         }
-                        if (round === 10) { // 라운드 10 완전 클리어
+                        if (round === 10) {
                             title.innerText = `🏆 최종 승리! 🏆`;
                             title.style.color = '#ffd700';
-                            desc.innerText = '모든 라운드와 최종 보스 블레이드 마스터를 격파했습니다!';
+                            desc.innerText = '소드마스터를 물리치고 신화적 승리를 거두었습니다!';
                             btn.innerText = '메인 화면으로';
                         } else {
                             title.innerText = `라운드 ${round} 승리!`;
@@ -1169,10 +1078,11 @@ def main():
                         if (round === 10) {
                             round = 1;
                             kills = 0;
-                            money = 0;
+                            money = 1500;
                             WEAPONS[3].owned = false;
                             WEAPONS[4].owned = false;
                             WEAPONS[5].owned = false;
+                            WEAPONS[6].owned = false;
                             currentWeaponId = 1;
                             createGunModel();
                         } else {
@@ -1181,10 +1091,11 @@ def main():
                     } else {
                         round = 1;
                         kills = 0;
-                        money = 0;
+                        money = 1500;
                         WEAPONS[3].owned = false;
                         WEAPONS[4].owned = false;
                         WEAPONS[5].owned = false;
+                        WEAPONS[6].owned = false;
                         currentWeaponId = 1;
                         createGunModel();
                     }
@@ -1230,89 +1141,27 @@ def main():
                             const enemyPos = enemy.mesh.position;
 
                             if (enemy.isBoss) {
-                                if (enemy.bossType === 'dragon') {
-                                    if (!enemy.isSlamming && time - enemy.lastBossAttack > enemy.attackCooldown) {
-                                        if (enemy.attackIndex === 2) {
-                                            createFireBreath(enemy);
-                                            enemy.attackIndex = 0;
-                                        } else {
-                                            enemy.isSlamming = true;
-                                            enemy.slamPhase = 1;
-                                            enemy.lastSlam = time;
-                                            enemy.attackIndex++;
-                                        }
-                                        enemy.lastBossAttack = time;
-                                    }
-
-                                    if (enemy.isSlamming) {
-                                        if (enemy.slamPhase === 1) {
-                                            enemyPos.y += 18 * delta;
-                                            if (enemyPos.y >= 8.0) enemy.slamPhase = 2;
-                                        } else if (enemy.slamPhase === 2) {
-                                            enemyPos.y -= 40 * delta;
-                                            if (enemyPos.y <= 0) {
-                                                enemyPos.y = 0;
-                                                enemy.isSlamming = false;
-                                                createShockwave(enemyPos.x, enemyPos.z);
-                                            }
-                                        }
-                                    } else {
-                                        const dist = enemyPos.distanceTo(playerPos);
-                                        if (dist > 4.0) {
-                                            const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
-                                            enemyPos.x += dir.x * enemy.speed * delta;
-                                            enemyPos.z += dir.z * enemy.speed * delta;
-                                            enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-                                        }
-                                    }
-                                } else if (enemy.bossType === 'blade') { // 10라운드 검사 보스 로직
+                                if (enemy.bossType === 'blade') {
                                     enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                                    
+                                    // 대검 및 아우라 회전 비주얼 이펙트
+                                    if (enemy.swordsGroup) {
+                                        enemy.swordsGroup.rotation.y += 4.0 * delta;
+                                    }
+                                    if (enemy.auraMesh) {
+                                        enemy.auraMesh.rotation.z += 2.0 * delta;
+                                    }
 
-                                    if (enemy.state === 'idle') {
-                                        const dist = enemyPos.distanceTo(playerPos);
-                                        if (dist > 3.0) {
-                                            const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
-                                            enemyPos.x += dir.x * enemy.speed * delta;
-                                            enemyPos.z += dir.z * enemy.speed * delta;
-                                        }
+                                    const dist = enemyPos.distanceTo(playerPos);
+                                    if (dist > 3.0) {
+                                        const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
+                                        enemyPos.x += dir.x * enemy.speed * delta; // 느려진 보스 이동 속도
+                                        enemyPos.z += dir.z * enemy.speed * delta;
+                                    }
 
-                                        if (time - enemy.lastBossAttack > enemy.attackCooldown) {
-                                            enemy.lastBossAttack = time;
-                                            if (Math.random() < 0.5) {
-                                                // 패턴 1: 기 모으기 후 돌진
-                                                enemy.state = 'charging';
-                                                enemy.stateTimer = time;
-                                                enemy.auraMesh.material.opacity = 0.8;
-                                            } else {
-                                                // 패턴 2: 검기 날리기
-                                                createSwordWave(enemy);
-                                            }
-                                        }
-                                    } else if (enemy.state === 'charging') {
-                                        // 기 모으기 연출 (1초간)
-                                        enemy.auraMesh.rotation.y += 10 * delta;
-                                        if (time - enemy.stateTimer > 1000) {
-                                            enemy.state = 'dashing';
-                                            enemy.dashTarget.copy(playerPos);
-                                            enemy.auraMesh.material.opacity = 0.0;
-                                        }
-                                    } else if (enemy.state === 'dashing') {
-                                        // 빛의 속도로 초고속 돌진
-                                        const dashDir = new THREE.Vector3().subVectors(enemy.dashTarget, enemyPos).normalize();
-                                        enemyPos.x += dashDir.x * 35.0 * delta;
-                                        enemyPos.z += dashDir.z * 35.0 * delta;
-
-                                        // 플레이어와 충돌 체크
-                                        if (enemyPos.distanceTo(playerPos) < 2.5) {
-                                            playerHealth -= 35;
-                                            updateHUD();
-                                            if (playerHealth <= 0) endGame(false);
-                                            enemy.state = 'idle';
-                                        }
-
-                                        if (enemyPos.distanceTo(enemy.dashTarget) < 1.0 || time - enemy.stateTimer > 2500) {
-                                            enemy.state = 'idle';
-                                        }
+                                    if (time - enemy.lastBossAttack > enemy.attackCooldown) {
+                                        enemy.lastBossAttack = time;
+                                        createSwordWave(enemy); // 회전 검기 스킬
                                     }
                                 }
                             } else {
@@ -1333,7 +1182,7 @@ def main():
                             }
                         });
 
-                        // 검기 이동 및 충돌 체크
+                        // 검기 스킬 이동 및 충돌
                         for (let i = swordWaves.length - 1; i >= 0; i--) {
                             const sw = swordWaves[i];
                             sw.mesh.position.add(sw.direction.clone().multiplyScalar(sw.speed * delta));
@@ -1351,29 +1200,6 @@ def main():
                             if (sw.life <= 0) {
                                 scene.remove(sw.mesh);
                                 swordWaves.splice(i, 1);
-                            }
-                        }
-
-                        // 충격파 체크
-                        for (let i = shockwaves.length - 1; i >= 0; i--) {
-                            const wave = shockwaves[i];
-                            wave.radius += wave.speed * delta;
-                            wave.mesh.scale.set(wave.radius, wave.radius, 1);
-                            wave.mesh.material.opacity = 1 - (wave.radius / wave.maxRadius);
-
-                            const distToPlayer = Math.hypot(playerPos.x - wave.originX, playerPos.z - wave.originZ);
-                            if (!wave.hasHitPlayer && Math.abs(distToPlayer - wave.radius) < 1.8) {
-                                if (camera.position.y < PLAYER_HEIGHT + 1.2) {
-                                    playerHealth -= 35;
-                                    wave.hasHitPlayer = true;
-                                    updateHUD();
-                                    if (playerHealth <= 0) endGame(false);
-                                }
-                            }
-
-                            if (wave.radius >= wave.maxRadius) {
-                                scene.remove(wave.mesh);
-                                shockwaves.splice(i, 1);
                             }
                         }
                     }
