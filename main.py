@@ -34,12 +34,13 @@ def main():
         st.markdown("""
         **조작법 및 신규 기능:**
         - **사격**: 마우스 좌클릭 / `E` 키
-        - **점프**: `Space` 키
-        - **달리기**: `Shift` 키 (누르고 이동)
+        - **점프**: `Space` 키 | **달리기**: `Shift` 키
+        - **라운드 스킵**: `M` 키 (즉시 다음 라운드로 이동)
         - **전체 화면 전환**: `O` 키
         - **상점 열기/닫기**: `B` 키 (산탄총 150G / 기관총 300G)
         - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4 키
-        - **보스전**: **5라운드**마다 강력한 보스 등장! (내려찍기 & 충격파 주의)
+        - **몬스터 디테일 업**: 디테일한 장갑과 빛나는 눈을 가진 디테일한 3D 적 모델 적용!
+        - **보스전**: **5라운드**마다 거대 타이탄 등장! (내려찍기 & 충격파 주의)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -270,7 +271,7 @@ def main():
                 </div>
 
                 <div id="boss-hud">
-                    ⚠️ 보스 : <span id="boss-title">타이탄</span>
+                    ⚠️ 보스 : <span id="boss-title">크로노스 타이탄</span>
                     <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
                 </div>
 
@@ -387,7 +388,6 @@ def main():
                 let scene, camera, renderer, gunMesh, muzzleLight;
                 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
                 
-                // 점프 및 중력 물리 변수
                 let playerVelocityY = 0;
                 let isGrounded = true;
                 const GRAVITY = -28.0;
@@ -575,6 +575,11 @@ def main():
                     }
                 }
 
+                function skipRound() {
+                    if (!isGameActive) return;
+                    endGame(true);
+                }
+
                 function buildMap() {
                     const gridHelper = new THREE.GridHelper(100, 50, 0x00ffcc, 0x333355);
                     gridHelper.position.y = 0.01;
@@ -622,7 +627,6 @@ def main():
                     
                     document.getElementById('boss-hud').style.display = 'none';
 
-                    // 5라운드 단위로 보스 생성
                     if (round % 5 === 0) {
                         createBossEnemy(0, -20);
                         document.getElementById('boss-hud').style.display = 'block';
@@ -641,20 +645,38 @@ def main():
                     updateHUD();
                 }
 
+                // 웅장한 디테일 3D 몬스터 세동
                 function createEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    const bodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.5);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff0044, metalness: 0.5 });
-                    const body = new THREE.Mesh(bodyGeo, bodyMat);
-                    body.position.y = 1.0;
-                    group.add(body);
+                    // 1. 역삼각형의 중장갑 가슴
+                    const torsoGeo = new THREE.ConeGeometry(0.8, 1.4, 6);
+                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x331122, metalness: 0.8, roughness: 0.3 });
+                    const torso = new THREE.Mesh(torsoGeo, armorMat);
+                    torso.rotation.x = Math.PI;
+                    torso.position.y = 1.3;
+                    group.add(torso);
 
-                    const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-                    headGeo.translate(0, 1.8, 0);
-                    const headMat = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+                    // 2. 어깨 갑옷
+                    const shoulderGeo = new THREE.BoxGeometry(1.6, 0.4, 0.6);
+                    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x880022, metalness: 0.9, roughness: 0.2 });
+                    const shoulder = new THREE.Mesh(shoulderGeo, shoulderMat);
+                    shoulder.position.y = 1.8;
+                    group.add(shoulder);
+
+                    // 3. 투구 및 가시 머리
+                    const headGeo = new THREE.OctahedronGeometry(0.4, 0);
+                    const headMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9 });
                     const head = new THREE.Mesh(headGeo, headMat);
+                    head.position.y = 2.2;
                     group.add(head);
+
+                    // 4. 빛나는 붉은 안광 (Eye glow)
+                    const eyeGeo = new THREE.BoxGeometry(0.3, 0.08, 0.1);
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                    const eye = new THREE.Mesh(eyeGeo, eyeMat);
+                    eye.position.set(0, 2.2, -0.3);
+                    group.add(eye);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
@@ -670,31 +692,48 @@ def main():
                     });
                 }
 
+                // 거대 웅장한 보스 몬스터
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    // 보스 거대 본체 (스케일 3.5배)
-                    const bodyGeo = new THREE.BoxGeometry(3.0, 4.5, 2.0);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xaa0033, metalness: 0.8, roughness: 0.2 });
-                    const body = new THREE.Mesh(bodyGeo, bodyMat);
-                    body.position.y = 3.5;
-                    group.add(body);
+                    // 1. 거대 중장갑 체구
+                    const torsoGeo = new THREE.ConeGeometry(2.8, 4.5, 8);
+                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x440011, metalness: 0.9, roughness: 0.1 });
+                    const torso = new THREE.Mesh(torsoGeo, armorMat);
+                    torso.rotation.x = Math.PI;
+                    torso.position.y = 4.0;
+                    group.add(torso);
 
-                    const headGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-                    headGeo.translate(0, 6.5, 0);
-                    const headMat = new THREE.MeshStandardMaterial({ color: 0xff3300 });
+                    // 2. 육중한 거대 어깨 장갑
+                    const shoulderGeo = new THREE.BoxGeometry(5.2, 1.2, 2.2);
+                    const shoulderMat = new THREE.MeshStandardMaterial({ color: 0xaa0033, metalness: 0.8 });
+                    const shoulder = new THREE.Mesh(shoulderGeo, shoulderMat);
+                    shoulder.position.y = 5.6;
+                    group.add(shoulder);
+
+                    // 3. 위압감 있는 다면체 투구
+                    const headGeo = new THREE.DodecahedronGeometry(1.0, 0);
+                    const headMat = new THREE.MeshStandardMaterial({ color: 0x220005, metalness: 0.95 });
                     const head = new THREE.Mesh(headGeo, headMat);
+                    head.position.y = 6.8;
                     group.add(head);
 
-                    // 보스 발광 오라
-                    const auraLight = new THREE.PointLight(0xff0055, 3, 15);
-                    auraLight.position.set(0, 4, 0);
+                    // 4. 보스 거대 붉은 안광
+                    const eyeGeo = new THREE.BoxGeometry(1.2, 0.25, 0.3);
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+                    const eye = new THREE.Mesh(eyeGeo, eyeMat);
+                    eye.position.set(0, 6.8, -0.9);
+                    group.add(eye);
+
+                    // 5. 보스 주위 발광 포인트
+                    const auraLight = new THREE.PointLight(0xff0044, 4, 20);
+                    auraLight.position.set(0, 5, 0);
                     group.add(auraLight);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 1200 + (round * 400); // 튼튼한 체력
+                    const maxHp = 1200 + (round * 400);
                     bossEnemy = {
                         mesh: group,
                         hp: maxHp,
@@ -704,7 +743,7 @@ def main():
                         lastAttack: 0,
                         lastSlam: performance.now(),
                         isSlamming: false,
-                        slamPhase: 0, // 1: 상승, 2: 강하
+                        slamPhase: 0,
                         isBoss: true
                     };
 
@@ -737,6 +776,7 @@ def main():
                     if (!isGameActive) return;
                     if (e.code === 'KeyB') { toggleShop(); return; }
                     if (e.code === 'KeyO') { toggleFullScreen(); return; }
+                    if (e.code === 'KeyM') { skipRound(); return; } // M 키 누를 시 라운드 스킵
                     if (isShopOpen) return;
 
                     switch (e.code) {
@@ -744,7 +784,7 @@ def main():
                         case 'KeyS': moveBackward = true; break;
                         case 'KeyA': moveLeft = true; break;
                         case 'KeyD': moveRight = true; break;
-                        case 'ShiftLeft': isSprinting = true; break; // 달리기
+                        case 'ShiftLeft': isSprinting = true; break;
                         case 'Space': 
                             if (isGrounded) {
                                 playerVelocityY = JUMP_FORCE;
@@ -921,7 +961,6 @@ def main():
                     prevTime = time;
 
                     if (isGameActive && !isShopOpen) {
-                        // 1. 플레이어 Y축 물리 (점프/중력)
                         playerVelocityY += GRAVITY * delta;
                         camera.position.y += playerVelocityY * delta;
 
@@ -931,7 +970,6 @@ def main():
                             isGrounded = true;
                         }
 
-                        // 2. 플레이어 평면 이동 (Shift = 달리기)
                         velocity.x -= velocity.x * 10.0 * delta;
                         velocity.z -= velocity.z * 10.0 * delta;
 
@@ -939,7 +977,7 @@ def main():
                         direction.x = Number(moveRight) - Number(moveLeft);
                         direction.normalize();
 
-                        const moveSpeed = isSprinting ? 65.0 : 35.0; // Shift 누르면 빠르게 이동
+                        const moveSpeed = isSprinting ? 65.0 : 35.0;
                         if (moveForward || moveBackward) velocity.z -= direction.z * moveSpeed * delta;
                         if (moveLeft || moveRight) velocity.x -= direction.x * moveSpeed * delta;
 
@@ -948,35 +986,31 @@ def main():
 
                         const playerPos = camera.position;
 
-                        // 3. 보스 패턴 및 적 AI 로직
                         enemies.forEach(enemy => {
                             const enemyPos = enemy.mesh.position;
 
                             if (enemy.isBoss) {
-                                // 보스 스킬 : 내려찍기 파동 공격 패턴
                                 if (!enemy.isSlamming && time - enemy.lastSlam > 5000) {
                                     enemy.isSlamming = true;
-                                    enemy.slamPhase = 1; // 점프 시도
+                                    enemy.slamPhase = 1;
                                     enemy.lastSlam = time;
                                 }
 
                                 if (enemy.isSlamming) {
                                     if (enemy.slamPhase === 1) {
-                                        enemyPos.y += 18 * delta; // 높이 도약
+                                        enemyPos.y += 18 * delta;
                                         if (enemyPos.y >= 8.0) {
-                                            enemy.slamPhase = 2; // 내리찍기
+                                            enemy.slamPhase = 2;
                                         }
                                     } else if (enemy.slamPhase === 2) {
-                                        enemyPos.y -= 40 * delta; // 강하
+                                        enemyPos.y -= 40 * delta;
                                         if (enemyPos.y <= 0) {
                                             enemyPos.y = 0;
                                             enemy.isSlamming = false;
-                                            // 지면 내려찍을 때 파동 발생
                                             createShockwave(enemyPos.x, enemyPos.z);
                                         }
                                     }
                                 } else {
-                                    // 일반 보스 추적 이동
                                     const dist = enemyPos.distanceTo(playerPos);
                                     if (dist > 3.0) {
                                         const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
@@ -993,7 +1027,6 @@ def main():
                                     }
                                 }
                             } else {
-                                // 일반 적 추적
                                 const dist = enemyPos.distanceTo(playerPos);
                                 if (dist > 1.8) {
                                     const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
@@ -1011,17 +1044,15 @@ def main():
                             }
                         });
 
-                        // 4. 충격파(파동) 애니메이션 & 데미지 판정
                         for (let i = shockwaves.length - 1; i >= 0; i--) {
                             const wave = shockwaves[i];
                             wave.radius += wave.speed * delta;
                             wave.mesh.scale.set(wave.radius, wave.radius, 1);
                             wave.mesh.material.opacity = 1 - (wave.radius / wave.maxRadius);
 
-                            // 충격파 데미지 (플레이어가 공중에 떠 있으면 피할 수 있음)
                             const distToPlayer = Math.hypot(playerPos.x - wave.originX, playerPos.z - wave.originZ);
                             if (!wave.hasHitPlayer && Math.abs(distToPlayer - wave.radius) < 1.8) {
-                                if (camera.position.y < PLAYER_HEIGHT + 1.2) { // 바닥에 있으면 맞음
+                                if (camera.position.y < PLAYER_HEIGHT + 1.2) {
                                     playerHealth -= 35;
                                     wave.hasHitPlayer = true;
                                     updateHUD();
