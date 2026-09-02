@@ -11,10 +11,11 @@ st.set_page_config(
 st.markdown("""
 <style>
     .block-container {
-        padding-top: 1rem;
+        padding-top: 0rem;
         padding-bottom: 0rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
+        padding-left: 0rem;
+        padding-right: 0rem;
+        max-width: 100% !important;
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -23,17 +24,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def main():
-    st.title("🎯 Vanguard Tactical (Streamlit 3D FPS)")
-    
     if "game_started" not in st.session_state:
         st.session_state.game_started = False
 
     if not st.session_state.game_started:
+        st.title("🎯 Vanguard Tactical (Streamlit 3D FPS)")
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **주요 특징 및 조작법:**
-        - **화면 클릭**: 마우스 커서 숨김 및 화면 중앙 조준점 고정
+        **업데이트 내용 및 조작법:**
+        - **체력 시스템**: 적 공격 시 체력 감소 (0이 되면 패배)
+        - **전체 화면 지원**: 오른쪽 상단 [전체 화면] 버튼으로 마우스 이탈 방지
         - **마우스 이동**: 시점 조준
         - **WASD**: 이동 | **Shift**: 천천히 걷기
         - **마우스 좌클릭 / Space**: 사격 (개선된 오디오 및 기관총 전용 모델)
@@ -45,18 +46,17 @@ def main():
             st.session_state.game_started = True
             st.rerun()
     else:
-        if st.button("메인 메뉴로 돌아가기"):
-            st.session_state.game_started = False
-            st.rerun()
-
         game_html = """
         <!DOCTYPE html>
         <html lang="ko">
         <head>
             <meta charset="UTF-8">
             <style>
-                body {
+                html, body {
+                    width: 100%;
+                    height: 100%;
                     margin: 0;
+                    padding: 0;
                     overflow: hidden;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     user-select: none;
@@ -64,22 +64,21 @@ def main():
                 }
                 #game-container {
                     width: 100vw;
-                    height: 80vh;
+                    height: 100vh;
                     position: relative;
-                    cursor: none; /* OS 마우스 포인터 숨김 */
+                    cursor: none;
                 }
                 #hud {
                     position: absolute;
-                    top: 10px;
-                    left: 10px;
+                    top: 15px;
+                    left: 20px;
                     color: #00ffcc;
-                    font-size: 16px;
+                    font-size: 18px;
                     font-weight: bold;
-                    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
                     pointer-events: none;
                     z-index: 10;
                 }
-                /* 화면 중앙 단일 조준점 고정 */
                 #crosshair {
                     position: absolute;
                     top: 50%;
@@ -111,6 +110,27 @@ def main():
                     box-shadow: 0 0 4px #00ffcc;
                 }
                 
+                #top-controls {
+                    position: absolute;
+                    top: 15px;
+                    right: 20px;
+                    z-index: 15;
+                    display: flex;
+                    gap: 10px;
+                }
+                .ui-btn {
+                    padding: 10px 18px;
+                    font-size: 15px;
+                    font-weight: bold;
+                    color: #111;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+                }
+                #shop-btn { background-color: #ffd700; }
+                #fullscreen-btn { background-color: #00ffcc; }
+
                 #start-overlay {
                     position: absolute;
                     top: 50%;
@@ -118,8 +138,8 @@ def main():
                     transform: translate(-50%, -50%);
                     color: white;
                     text-align: center;
-                    background: rgba(0, 0, 0, 0.85);
-                    padding: 25px 40px;
+                    background: rgba(0, 0, 0, 0.88);
+                    padding: 30px 50px;
                     border-radius: 12px;
                     z-index: 20;
                     border: 2px solid #00ffcc;
@@ -136,20 +156,6 @@ def main():
                     border-radius: 6px;
                     cursor: pointer;
                 }
-                #shop-btn {
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    padding: 10px 20px;
-                    font-size: 16px;
-                    font-weight: bold;
-                    color: #111;
-                    background-color: #ffd700;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    z-index: 15;
-                }
                 #shop-modal {
                     display: none;
                     position: absolute;
@@ -162,7 +168,7 @@ def main():
                     border-radius: 12px;
                     color: white;
                     z-index: 25;
-                    min-width: 300px;
+                    min-width: 320px;
                     text-align: center;
                     cursor: default;
                 }
@@ -189,11 +195,12 @@ def main():
                     color: #ff3333;
                     font-size: 36px;
                     text-align: center;
-                    background: rgba(0, 0, 0, 0.9);
-                    padding: 30px;
-                    border-radius: 10px;
+                    background: rgba(0, 0, 0, 0.92);
+                    padding: 40px;
+                    border-radius: 12px;
                     z-index: 30;
                     cursor: default;
+                    border: 2px solid #ff3333;
                 }
             </style>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -202,7 +209,7 @@ def main():
             <div id="game-container">
                 <div id="hud">
                     라운드: <span id="round">1</span> | 
-                    체력: <span id="health">무적 ∞</span> | 
+                    체력: <span id="health" style="color: #00ffcc;">100</span> | 
                     골드: <span id="money" style="color:#ffd700;">0</span>G | 
                     무기: <span id="weapon">권총</span> | 
                     탄약: <span id="ammo">12 / 12</span> | 
@@ -211,7 +218,10 @@ def main():
                 </div>
                 <div id="crosshair"></div>
                 
-                <button id="shop-btn" onclick="toggleShop()">🛒 상점 (B)</button>
+                <div id="top-controls">
+                    <button id="shop-btn" class="ui-btn" onclick="toggleShop()">🛒 상점 (B)</button>
+                    <button id="fullscreen-btn" class="ui-btn" onclick="toggleFullScreen()">🖥️ 전체 화면</button>
+                </div>
 
                 <div id="shop-modal">
                     <h2 style="color: #ffd700; margin-top:0;">무기 상점</h2>
@@ -228,18 +238,18 @@ def main():
                 
                 <div id="start-overlay">
                     <h2>🎯 게임 준비 완료</h2>
-                    <p style="color: #ccc; margin-bottom: 5px;">버튼을 누르면 소리 및 화면 고정이 활성화됩니다.</p>
+                    <p style="color: #ccc; margin-bottom: 5px;">전투를 시작하려면 버튼을 누르세요.</p>
                     <button id="start-btn" onclick="startGame()">전투 시작</button>
                 </div>
 
                 <div id="game-over">
-                    <h1 id="game-over-title">라운드 승리!</h1>
-                    <button onclick="nextRound()" style="font-size: 20px; padding: 10px 20px; cursor: pointer;">다음 라운드</button>
+                    <h1 id="game-over-title">게임 오버</h1>
+                    <p id="game-over-desc" style="font-size: 18px; color: #fff; margin-bottom: 20px;"></p>
+                    <button id="game-over-btn" onclick="resetOrNextRound()" style="font-size: 20px; padding: 10px 25px; cursor: pointer; background: #00ffcc; border: none; border-radius: 6px; font-weight: bold;">다음 라운드</button>
                 </div>
             </div>
 
             <script>
-                // 오디오 엔진 초기화 보완
                 let audioCtx = null;
                 
                 function initAudio() {
@@ -258,7 +268,7 @@ def main():
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     
-                    if (type === 4) { // 기관총 (묵직하고 빠른 사격음)
+                    if (type === 4) {
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(160, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
@@ -268,7 +278,7 @@ def main():
                         gain.connect(audioCtx.destination);
                         osc.start();
                         osc.stop(audioCtx.currentTime + 0.1);
-                    } else if (type === 3) { // 산탄총
+                    } else if (type === 3) {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(90, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.2);
@@ -278,7 +288,7 @@ def main():
                         gain.connect(audioCtx.destination);
                         osc.start();
                         osc.stop(audioCtx.currentTime + 0.2);
-                    } else { // 권총 및 소총
+                    } else {
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(220, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.12);
@@ -291,7 +301,6 @@ def main():
                     }
                 }
 
-                // 무기 정보
                 const WEAPONS = {
                     1: { name: '권총', damage: 25, range: 40, fireRate: 300, magSize: 12, reloadTime: 1200, recoil: 0.02, color: 0x777777 },
                     2: { name: '소총', damage: 35, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, color: 0x225522 },
@@ -299,7 +308,7 @@ def main():
                     4: { name: '기관총', damage: 40, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, color: 0xd4af37, owned: false }
                 };
 
-                let round = 1, kills = 0, money = 0;
+                let round = 1, kills = 0, money = 0, playerHealth = 100;
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
 
@@ -308,6 +317,7 @@ def main():
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
                 let enemies = [], walls = [], isGameActive = false, isShopOpen = false;
+                let isRoundCleared = false;
 
                 let pitch = 0, yaw = 0;
 
@@ -319,7 +329,7 @@ def main():
                     scene.background = new THREE.Color(0x1a1a24);
                     scene.fog = new THREE.Fog(0x1a1a24, 0, 75);
 
-                    camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight * 0.8), 0.1, 1000);
+                    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                     camera.position.y = 1.6;
 
                     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -330,13 +340,12 @@ def main():
                     scene.add(dirLight);
 
                     renderer = new THREE.WebGLRenderer({ antialias: true });
-                    renderer.setSize(window.innerWidth, window.innerHeight * 0.8);
+                    renderer.setSize(window.innerWidth, window.innerHeight);
                     const container = document.getElementById('game-container');
                     container.appendChild(renderer.domElement);
 
                     createGunModel();
 
-                    // 마우스 이동 시 시점 제어
                     container.addEventListener('mousemove', (e) => {
                         if (!isGameActive || isShopOpen) return;
 
@@ -358,19 +367,37 @@ def main():
                     document.addEventListener('keydown', onKeyDown);
                     document.addEventListener('keyup', onKeyUp);
 
+                    window.addEventListener('resize', onWindowResize);
+
                     buildMap();
                     startRound();
                     animate();
                 }
 
-                // 1인칭 총기 모델링 (기관총 전용 형태 및 금색 텍스쳐 스타일 포함)
+                function onWindowResize() {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+
+                function toggleFullScreen() {
+                    const container = document.getElementById('game-container');
+                    if (!document.fullscreenElement) {
+                        container.requestFullscreen().catch(err => {
+                            alert(`전체 화면 전환 실패: ${err.message}`);
+                        });
+                    } else {
+                        document.exitFullscreen();
+                    }
+                }
+
                 function createGunModel() {
                     if (gunMesh) camera.remove(gunMesh);
 
                     const gunGroup = new THREE.Group();
                     const w = WEAPONS[currentWeaponId];
 
-                    if (currentWeaponId === 4) { // 기관총 (대형 금색 모델링)
+                    if (currentWeaponId === 4) {
                         const bodyGeo = new THREE.BoxGeometry(0.16, 0.18, 0.8);
                         const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 });
                         const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -383,7 +410,7 @@ def main():
 
                         gunGroup.add(body);
                         gunGroup.add(mag);
-                    } else { // 기타 총기
+                    } else {
                         const barrelGeo = new THREE.BoxGeometry(0.1, 0.1, 0.55);
                         const barrelMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.7, roughness: 0.3 });
                         const barrel = new THREE.Mesh(barrelGeo, barrelMat);
@@ -456,6 +483,7 @@ def main():
                 function startRound() {
                     enemies.forEach(e => scene.remove(e.mesh));
                     enemies = [];
+                    playerHealth = 100;
                     camera.position.set(0, 1.6, 40);
                     
                     const enemyCount = round * 2 + 1;
@@ -471,25 +499,21 @@ def main():
                     updateHUD();
                 }
 
-                // 디테일해진 적 로봇 모델 생성
                 function createEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    // 몸통
                     const bodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.5);
                     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, metalness: 0.5 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
                     body.position.y = 1.0;
                     group.add(body);
 
-                    // 머리
                     const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
                     const headMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
                     const head = new THREE.Mesh(headGeo, headMat);
                     head.position.y = 1.8;
                     group.add(head);
 
-                    // 총기 디테일
                     const gunGeo = new THREE.BoxGeometry(0.1, 0.1, 0.6);
                     const gunMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
                     const gun = new THREE.Mesh(gunGeo, gunMat);
@@ -504,7 +528,8 @@ def main():
                         hp: 50 + (round * 10),
                         maxHp: 50 + (round * 10),
                         speed: 3 + (Math.random() * 1.5),
-                        damage: 10
+                        damage: 10,
+                        lastAttack: 0
                     });
                 }
 
@@ -600,7 +625,7 @@ def main():
                                     kills++;
                                     money += 20;
                                     updateHUD();
-                                    if (enemies.length === 0) endRound(true);
+                                    if (enemies.length === 0) endGame(true);
                                 }
                             }
                         }
@@ -609,21 +634,53 @@ def main():
 
                 function updateHUD() {
                     document.getElementById('round').innerText = round;
+                    document.getElementById('health').innerText = Math.max(0, Math.round(playerHealth));
                     document.getElementById('money').innerText = money;
                     document.getElementById('weapon').innerText = WEAPONS[currentWeaponId].name;
                     document.getElementById('ammo').innerText = `${currentAmmo} / ${WEAPONS[currentWeaponId].magSize}`;
                     document.getElementById('kills').innerText = kills;
                     document.getElementById('enemies-left').innerText = enemies.length;
+
+                    const healthElem = document.getElementById('health');
+                    if (playerHealth < 30) healthElem.style.color = '#ff3333';
+                    else if (playerHealth < 60) healthElem.style.color = '#ffaa00';
+                    else healthElem.style.color = '#00ffcc';
                 }
 
-                function endRound(victory) {
+                function endGame(victory) {
                     isGameActive = false;
+                    isRoundCleared = victory;
                     gameOverScreen.style.display = 'block';
+
+                    const title = document.getElementById('game-over-title');
+                    const desc = document.getElementById('game-over-desc');
+                    const btn = document.getElementById('game-over-btn');
+
+                    if (victory) {
+                        title.innerText = `라운드 ${round} 승리!`;
+                        title.style.color = '#00ffcc';
+                        desc.innerText = '적을 모두 물리쳤습니다!';
+                        btn.innerText = '다음 라운드 진입';
+                    } else {
+                        title.innerText = '패배했습니다...';
+                        title.style.color = '#ff3333';
+                        desc.innerText = `적에게 제압당했습니다. (최종 라운드: ${round})`;
+                        btn.innerText = '다시 시작하기';
+                    }
                 }
 
-                function nextRound() {
+                function resetOrNextRound() {
                     gameOverScreen.style.display = 'none';
-                    round++;
+                    if (isRoundCleared) {
+                        round++;
+                    } else {
+                        round = 1;
+                        kills = 0;
+                        money = 0;
+                        WEAPONS[4].owned = false;
+                        currentWeaponId = 1;
+                        createGunModel();
+                    }
                     startRound();
                     isGameActive = true;
                 }
@@ -656,11 +713,19 @@ def main():
                             const enemyPos = enemy.mesh.position;
                             const dist = enemyPos.distanceTo(playerPos);
 
-                            if (dist > 1.5) {
+                            if (dist > 1.8) {
                                 const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
                                 enemyPos.x += dir.x * enemy.speed * delta;
                                 enemyPos.z += dir.z * enemy.speed * delta;
                                 enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                            } else {
+                                // 적 근접 공격 및 데미지 연산 (1초 간격)
+                                if (time - enemy.lastAttack > 1000) {
+                                    playerHealth -= enemy.damage;
+                                    enemy.lastAttack = time;
+                                    updateHUD();
+                                    if (playerHealth <= 0) endGame(false);
+                                }
                             }
                         });
                     }
@@ -673,8 +738,7 @@ def main():
         </html>
         """
         
-        components.html(game_html, height=750)
+        components.html(game_html, height=800)
 
 if __name__ == "__main__":
     main()
-    
