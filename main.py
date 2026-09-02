@@ -32,11 +32,10 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **복원 및 개선 기능:**
-        - **M 키 치트**: 누를 때마다 라운드 즉시 스킵 & +100 Gold 지급
-        - **총구 기반 발사 이펙트**: 총구에서 직접 궤적 및 레이저가 발사되도록 정확히 동기화
-        - **소드마스터 패턴**: 기 모으기 후 돌진, 검기 투사체 발사, 강하 폭발 패턴 완벽 구현
-        - **속도 밸런스 개선**: 적 및 보스의 이동 및 스킬 속도 상향
+        **패치 내역:**
+        - **드래곤 보스 강화**: 체력 증가(1600), 브레스 지속시간 및 범위 대폭 확대, 충격파 범위 증가
+        - **디테일한 3D 모델링**: 드래곤(얼굴, 눈, 꼬리, 날개) & 소드마스터(투구, 팔, 다리, 정교한 검)
+        - **M 키 치트**: 라운드 스킵 & +100 Gold 지급
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -369,6 +368,12 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.5);
                         gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                    } else if (type === 'breath') {
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(90, audioCtx.currentTime);
+                        osc.frequency.linearRampToValueAtTime(180, audioCtx.currentTime + 0.6);
+                        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
                     }
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
@@ -480,7 +485,6 @@ def main():
                     }
                 }
 
-                // 무기 모델 및 정교한 총구 위치(Muzzle Point) 생성
                 function createGunModel() {
                     if (gunMesh) camera.remove(gunMesh);
 
@@ -501,7 +505,6 @@ def main():
                     body.position.set(0.25, -0.2, -0.4);
                     gunGroup.add(body);
 
-                    // 총구 위치 앵커 오프셋
                     muzzlePoint = new THREE.Object3D();
                     muzzlePoint.position.set(0.25, -0.2, -0.4 - (gunLength / 2));
                     gunGroup.add(muzzlePoint);
@@ -618,60 +621,138 @@ def main():
                     });
                 }
 
+                // 디테일한 드래곤 보스 생성 (얼굴, 눈, 입, 대형 날개, 가시 꼬리)
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
-                    const skinMat = new THREE.MeshStandardMaterial({ color: 0x881122, metalness: 0.4, roughness: 0.3 });
-                    const wingMat = new THREE.MeshStandardMaterial({ color: 0xaa2200, side: THREE.DoubleSide });
+                    const skinMat = new THREE.MeshStandardMaterial({ color: 0x991122, metalness: 0.5, roughness: 0.3 });
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+                    const wingMat = new THREE.MeshStandardMaterial({ color: 0xbb1100, side: THREE.DoubleSide });
 
-                    const body = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5.5, 8), skinMat);
+                    // 몸통
+                    const body = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6.5, 8), skinMat);
                     body.rotation.x = Math.PI / 2;
-                    body.position.set(0, 3.5, 0);
+                    body.position.set(0, 3.8, 0);
                     group.add(body);
 
-                    const head = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.8, 6), skinMat);
-                    head.rotation.x = -Math.PI / 3;
-                    head.position.set(0, 4.5, -2.8);
-                    group.add(head);
+                    // 머리 및 입
+                    const headGroup = new THREE.Group();
+                    headGroup.position.set(0, 4.8, -3.2);
+
+                    const headBox = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 2.2), skinMat);
+                    headGroup.add(headBox);
+
+                    const snout = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 1.5), skinMat);
+                    snout.position.set(0, -0.2, -1.4);
+                    headGroup.add(snout);
+
+                    // 양쪽 눈
+                    const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
+                    leftEye.position.set(-0.7, 0.3, -0.6);
+                    const rightEye = leftEye.clone();
+                    rightEye.position.x = 0.7;
+                    headGroup.add(leftEye);
+                    headGroup.add(rightEye);
+
+                    group.add(headGroup);
+
+                    // 대형 3D 날개
+                    const leftWing = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.1, 3.0), wingMat);
+                    leftWing.position.set(-4.2, 4.5, 0.5);
+                    leftWing.rotation.z = Math.PI / 12;
+                    leftWing.rotation.y = -Math.PI / 12;
+
+                    const rightWing = leftWing.clone();
+                    rightWing.position.x = 4.2;
+                    rightWing.rotation.z = -Math.PI / 12;
+                    rightWing.rotation.y = Math.PI / 12;
+
+                    group.add(leftWing);
+                    group.add(rightWing);
+
+                    // 가시 꼬리
+                    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 1.2, 6.0, 8), skinMat);
+                    tail.rotation.x = Math.PI / 3;
+                    tail.position.set(0, 2.2, 4.0);
+                    group.add(tail);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 1400;
+                    const maxHp = 1600; // 체력 상향
                     bossEnemy = {
                         mesh: group,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 4.8,
+                        speed: 5.0,
                         isBoss: true,
                         bossType: 'dragon',
                         state: 'walk',
                         jumpVelocityY: 0,
                         lastSkillTime: performance.now(),
-                        skillCooldown: 3500
+                        skillCooldown: 3200
                     };
                     enemies.push(bossEnemy);
                 }
 
-                // 소드마스터 생성 및 고유 속성 정의
+                // 디테일한 소드마스터 생성 (머리, 투구, 눈, 양 팔, 양 다리, 거대 레이저 검)
                 function createSwordBossEnemy(x, z) {
                     const group = new THREE.Group();
-                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x111122, metalness: 0.9, roughness: 0.2 });
-                    const swordMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.8 });
+                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x151522, metalness: 0.9, roughness: 0.2 });
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+                    const swordMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.9 });
 
+                    // 몸통
                     const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.4, 1.0), armorMat);
-                    torso.position.y = 2.5;
+                    torso.position.y = 2.6;
                     group.add(torso);
 
-                    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.8, 0.5), swordMat);
-                    sword.position.set(1.6, 2.5, -0.5);
-                    sword.rotation.x = Math.PI / 4;
-                    group.add(sword);
+                    // 머리 (투구 및 빛나는 눈)
+                    const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), armorMat);
+                    head.position.y = 4.2;
+                    
+                    const visior = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.2), eyeMat);
+                    visior.position.set(0, 0.1, -0.5);
+                    head.add(visior);
+                    group.add(head);
 
-                    // 기 모으기 오라 구체
-                    const auraGeo = new THREE.SphereGeometry(2.5, 16, 16);
+                    // 양 팔
+                    const armGeo = new THREE.BoxGeometry(0.5, 2.0, 0.5);
+                    const leftArm = new THREE.Mesh(armGeo, armorMat);
+                    leftArm.position.set(-1.2, 2.6, 0);
+
+                    const rightArm = new THREE.Mesh(armGeo, armorMat);
+                    rightArm.position.set(1.2, 2.6, 0);
+                    group.add(leftArm);
+                    group.add(rightArm);
+
+                    // 양 다리
+                    const legGeo = new THREE.BoxGeometry(0.6, 2.2, 0.6);
+                    const leftLeg = new THREE.Mesh(legGeo, armorMat);
+                    leftLeg.position.set(-0.5, 1.1, 0);
+
+                    const rightLeg = new THREE.Mesh(legGeo, armorMat);
+                    rightLeg.position.set(0.5, 1.1, 0);
+                    group.add(leftLeg);
+                    group.add(rightLeg);
+
+                    // 대형검
+                    const swordGroup = new THREE.Group();
+                    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.2, 0.6), swordMat);
+                    blade.position.y = 2.6;
+                    swordGroup.add(blade);
+
+                    const hilt = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 0.4), armorMat);
+                    swordGroup.add(hilt);
+
+                    swordGroup.position.set(1.4, 2.6, -0.4);
+                    swordGroup.rotation.x = Math.PI / 4;
+                    group.add(swordGroup);
+
+                    // 기 모으기 아우라
+                    const auraGeo = new THREE.SphereGeometry(2.8, 16, 16);
                     const auraMat = new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0 });
                     const auraMesh = new THREE.Mesh(auraGeo, auraMat);
-                    auraMesh.position.y = 2.5;
+                    auraMesh.position.y = 2.6;
                     group.add(auraMesh);
 
                     group.position.set(x, 0, z);
@@ -698,14 +779,13 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
-                // 검기 투사체 생성
                 function spawnSwordWave(bossPos, targetPos) {
                     playSound('sword_wave');
-                    const waveGeo = new THREE.TorusGeometry(2.0, 0.15, 8, 24, Math.PI);
+                    const waveGeo = new THREE.TorusGeometry(2.2, 0.2, 8, 24, Math.PI);
                     const waveMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide });
                     const waveMesh = new THREE.Mesh(waveGeo, waveMat);
 
-                    const startPos = bossPos.clone().add(new THREE.Vector3(0, 2.5, 0));
+                    const startPos = bossPos.clone().add(new THREE.Vector3(0, 2.6, 0));
                     waveMesh.position.copy(startPos);
                     waveMesh.lookAt(targetPos);
                     waveMesh.rotation.z += Math.PI / 2;
@@ -725,27 +805,28 @@ def main():
                     ring.position.y = 0.1;
 
                     scene.add(ring);
-                    shockwaves.push({ mesh: ring, maxRadius: radius, damage: damage, currentScale: 0.1, expandSpeed: 25.0 });
+                    shockwaves.push({ mesh: ring, maxRadius: radius, damage: damage, currentScale: 0.1, expandSpeed: 30.0 });
                     playSound('slam');
                 }
 
+                // 강화된 드래곤 브레스 발사 (연사 수량 45개, 오랫동안 지속 분사)
                 function spawnDragonBreath(dragonPos, forwardDir) {
                     playSound('breath');
-                    for (let i = 0; i < 20; i++) {
-                        const pGeo = new THREE.SphereGeometry(0.3 + Math.random()*0.4, 8, 8);
-                        const pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff3300 : 0xffaa00, transparent: true, opacity: 0.8 });
+                    for (let i = 0; i < 45; i++) {
+                        const pGeo = new THREE.SphereGeometry(0.4 + Math.random()*0.5, 8, 8);
+                        const pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xff2200 : 0xffaa00, transparent: true, opacity: 0.85 });
                         const pMesh = new THREE.Mesh(pGeo, pMat);
                         
-                        const startPos = dragonPos.clone().add(new THREE.Vector3(0, 3.5, 0));
+                        const startPos = dragonPos.clone().add(new THREE.Vector3(0, 4.5, -3.0));
                         pMesh.position.copy(startPos);
                         
-                        const spreadDir = forwardDir.clone().add(new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.2, (Math.random()-0.5)*0.5)).normalize();
+                        const spreadDir = forwardDir.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.6)).normalize();
                         scene.add(pMesh);
 
                         breathParticles.push({
                             mesh: pMesh,
-                            velocity: spreadDir.multiplyScalar(22.0 + Math.random()*10.0),
-                            life: 1.2
+                            velocity: spreadDir.multiplyScalar(20.0 + Math.random()*14.0),
+                            life: 2.2 // 오래 지속
                         });
                     }
                 }
@@ -833,7 +914,6 @@ def main():
                     }, w.reloadTime);
                 }
 
-                // 무기 총구 위치 기반 발사 이펙트 구현
                 function triggerMuzzleEffect(targetPoint) {
                     const w = WEAPONS[currentWeaponId];
                     if (muzzleFlashLight) {
@@ -841,11 +921,10 @@ def main():
                         setTimeout(() => { if (muzzleFlashLight) muzzleFlashLight.intensity = 0; }, 50);
                     }
 
-                    // 카메라 위치가 아닌 실제 화면상 총구 오브젝트 위치 산출
                     const startPos = new THREE.Vector3();
                     muzzlePoint.getWorldPosition(startPos);
 
-                    if (currentWeaponId === 6) { // 레이저 빔
+                    if (currentWeaponId === 6) {
                         playSound('laser');
                         const dist = startPos.distanceTo(targetPoint);
                         const geom = new THREE.CylinderGeometry(0.05, 0.05, dist, 8);
@@ -856,10 +935,10 @@ def main():
                         laserMesh.lookAt(targetPoint);
                         scene.add(laserMesh);
                         visualEffects.push({ mesh: laserMesh, life: 0.12 });
-                    } else if (currentWeaponId === 5) { // 바주카 폭발
+                    } else if (currentWeaponId === 5) {
                         playSound('bazooka');
                         createExplosionEffect(targetPoint);
-                    } else { // 탄궤적
+                    } else {
                         const points = [startPos, targetPoint];
                         const geom = new THREE.BufferGeometry().setFromPoints(points);
                         const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
@@ -892,7 +971,7 @@ def main():
                     if (intersects.length > 0 && intersects[0].distance <= w.range) {
                         targetPoint = intersects[0].point;
                         const hitMesh = intersects[0].object;
-                        const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh));
+                        const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh) || e.mesh.children.some(c => c.children && c.children.includes(hitMesh)));
                         if (enemyObj) {
                             enemyObj.hp -= w.damage;
                             updateHUD();
@@ -991,7 +1070,6 @@ def main():
 
                         const playerPos = camera.position;
 
-                        // 시각적 이펙트 소멸
                         for (let i = visualEffects.length - 1; i >= 0; i--) {
                             const ve = visualEffects[i];
                             ve.life -= delta;
@@ -1001,13 +1079,12 @@ def main():
                             }
                         }
 
-                        // 검기 투사체 이동 및 충돌
                         for (let i = swordWaves.length - 1; i >= 0; i--) {
                             const sw = swordWaves[i];
                             sw.mesh.position.add(sw.dir.clone().multiplyScalar(sw.speed * delta));
                             sw.life -= delta;
 
-                            if (sw.mesh.position.distanceTo(playerPos) < 1.8) {
+                            if (sw.mesh.position.distanceTo(playerPos) < 2.0) {
                                 playerHealth -= sw.damage;
                                 updateHUD();
                                 scene.remove(sw.mesh);
@@ -1022,7 +1099,6 @@ def main():
                             }
                         }
 
-                        // 적 및 보스 인공지능 동작
                         enemies.forEach(enemy => {
                             const enemyPos = enemy.mesh.position;
 
@@ -1032,7 +1108,7 @@ def main():
 
                                     if (enemy.state === 'walk') {
                                         const dist = enemyPos.distanceTo(playerPos);
-                                        if (dist > 6.0) {
+                                        if (dist > 7.0) {
                                             const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
                                             enemyPos.x += dir.x * enemy.speed * delta;
                                             enemyPos.z += dir.z * enemy.speed * delta;
@@ -1040,9 +1116,9 @@ def main():
 
                                         if (time - enemy.lastSkillTime > enemy.skillCooldown) {
                                             enemy.lastSkillTime = time;
-                                            if (Math.random() > 0.5) {
+                                            if (Math.random() > 0.4) {
                                                 enemy.state = 'jumping';
-                                                enemy.jumpVelocityY = 16.0;
+                                                enemy.jumpVelocityY = 18.0;
                                             } else {
                                                 const forwardDir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
                                                 spawnDragonBreath(enemyPos, forwardDir);
@@ -1055,11 +1131,10 @@ def main():
                                         if (enemyPos.y <= 0) {
                                             enemyPos.y = 0;
                                             enemy.state = 'walk';
-                                            createShockwave(enemyPos.clone(), 14.0, 35);
+                                            createShockwave(enemyPos.clone(), 24.0, 40); // 넓어진 충격파 범위 (24.0)
                                         }
                                     }
                                 } else if (enemy.bossType === 'blade') {
-                                    // 소드마스터 패턴 제어
                                     enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
 
                                     if (enemy.state === 'walk') {
@@ -1070,36 +1145,33 @@ def main():
                                             enemyPos.z += dir.z * enemy.speed * delta;
                                         }
 
-                                        // 15초 원거리 대형 점프 강하 패턴
                                         if (time - enemy.lastSuperJumpTime > enemy.superJumpCooldown) {
                                             enemy.state = 'super_jump';
                                             enemy.lastSuperJumpTime = time;
                                             enemy.jumpVelocityY = 26.0;
                                             enemy.targetLandPos.copy(playerPos);
-                                        } 
-                                        // 무작위 스킬 발동 (기 모아 돌진 or 검기 날리기)
-                                        else if (time - enemy.lastSkillTime > enemy.skillCooldown) {
+                                        } else if (time - enemy.lastSkillTime > enemy.skillCooldown) {
                                             enemy.lastSkillTime = time;
-                                            if (Math.random() > 0.45) { // 기 모으기 후 고속 돌진
+                                            if (Math.random() > 0.45) {
                                                 enemy.state = 'charging';
                                                 enemy.chargeTimer = 0;
                                                 playSound('charge');
-                                            } else { // 검기 날리기
+                                            } else {
                                                 spawnSwordWave(enemyPos, playerPos);
                                             }
                                         }
                                     } else if (enemy.state === 'charging') {
                                         enemy.chargeTimer += delta;
-                                        enemy.auraMesh.material.opacity = Math.min(0.8, enemy.chargeTimer * 0.8);
+                                        enemy.auraMesh.material.opacity = Math.min(0.85, enemy.chargeTimer * 0.85);
 
-                                        if (enemy.chargeTimer >= 1.0) { // 1초간 기 모은 후 돌진
+                                        if (enemy.chargeTimer >= 1.0) {
                                             enemy.state = 'dashing';
                                             enemy.auraMesh.material.opacity = 0;
                                             enemy.dashDir.subVectors(playerPos, enemyPos).normalize();
                                             enemy.chargeTimer = 0;
                                             playSound('dash');
                                         }
-                                    } else if (enemy.state === 'dashing') { // 고속 돌진
+                                    } else if (enemy.state === 'dashing') {
                                         enemyPos.x += enemy.dashDir.x * 38.0 * delta;
                                         enemyPos.z += enemy.dashDir.z * 38.0 * delta;
                                         enemy.chargeTimer += delta;
@@ -1177,8 +1249,8 @@ def main():
                             bp.mesh.position.add(bp.velocity.clone().multiplyScalar(delta));
                             bp.life -= delta;
 
-                            if (bp.mesh.position.distanceTo(playerPos) < 1.8) {
-                                playerHealth -= 10 * delta;
+                            if (bp.mesh.position.distanceTo(playerPos) < 2.0) {
+                                playerHealth -= 12 * delta;
                                 updateHUD();
                                 if (playerHealth <= 0) endGame(false);
                             }
