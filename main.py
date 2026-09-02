@@ -34,6 +34,7 @@ def main():
         st.markdown("""
         **15라운드 신규 패치 내역:**
         - **최종 보스 '어둠의 검사' 추가 (15 Round)**: Dual Swords / 어둠의 잔상 돌진 / X자 검기 / 검 던지기 순간이동
+        - **어둠의 검사 밸런스 조정**: 이동 속도 하향 조절 및 눈 레이저 발사 패턴 추가
         - **어둠의 잔상 궤적**: 돌진 경로에 3초간 남아 피해를 주는 어둠의 잔상 장판 생성
         - **최대 라운드 15R 확장**: 신화급 무기들과 함께 최종 보스에 도전하세요.
         """)
@@ -802,7 +803,7 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
-                // 15라운드 최종 보스: 어둠의 검사 (쌍검)
+                // 15라운드 최종 보스: 어둠의 검사 (이속 하향 및 레이저 패턴 필드 추가)
                 function createDarkSwordsmanBoss(x, z) {
                     const group = new THREE.Group();
                     const darkMat = new THREE.MeshStandardMaterial({ color: 0x050505, metalness: 0.95, roughness: 0.1 });
@@ -820,7 +821,6 @@ def main():
                     head.add(visior);
                     group.add(head);
 
-                    // 쌍검 착용 (좌, 우)
                     function makeDarkSword() {
                         const sg = new THREE.Group();
                         const b = new THREE.Mesh(new THREE.BoxGeometry(0.25, 5.5, 0.5), darkSwordMat);
@@ -858,7 +858,7 @@ def main():
                         auraMesh: auraMesh,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 6.5,
+                        speed: 3.5, // 이동 속도 감소 (6.5 -> 3.5)
                         isBoss: true,
                         bossType: 'dark_swordsman',
                         state: 'walk',
@@ -866,9 +866,39 @@ def main():
                         dashDir: new THREE.Vector3(),
                         dashStartPos: new THREE.Vector3(),
                         lastSkillTime: performance.now(),
-                        skillCooldown: 2600
+                        skillCooldown: 2600,
+                        lastLaserTime: performance.now(),
+                        laserCooldown: 5000 // 5초 주기 레이저 발사
                     };
                     enemies.push(bossEnemy);
+                }
+
+                function spawnDarkLaser(bossPos, targetPos) {
+                    playSound('laser');
+                    
+                    const startPos = bossPos.clone().add(new THREE.Vector3(0, 4.6, 0)); 
+                    const dist = startPos.distanceTo(targetPos);
+                    
+                    const geom = new THREE.CylinderGeometry(0.12, 0.12, dist, 8);
+                    geom.rotateX(Math.PI / 2);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0.95 });
+                    const laserMesh = new THREE.Mesh(geom, mat);
+                    
+                    laserMesh.position.copy(startPos).add(targetPos).multiplyScalar(0.5);
+                    laserMesh.lookAt(targetPos);
+                    scene.add(laserMesh);
+
+                    visualEffects.push({ mesh: laserMesh, life: 0.2 });
+
+                    const ray = new THREE.Ray(startPos, new THREE.Vector3().subVectors(targetPos, startPos).normalize());
+                    const closestPoint = new THREE.Vector3();
+                    ray.closestPointToPoint(camera.position, closestPoint);
+
+                    if (closestPoint.distanceTo(camera.position) < 1.2) {
+                        playerHealth -= 35;
+                        updateHUD();
+                        if (playerHealth <= 0) endGame(false);
+                    }
                 }
 
                 function spawnSwordWave(bossPos, targetPos) {
@@ -1292,7 +1322,6 @@ def main():
                             }
                         }
 
-                        // X자 검기
                         for (let i = xSwordWaves.length - 1; i >= 0; i--) {
                             const xw = xSwordWaves[i];
                             xw.group.position.add(xw.dir.clone().multiplyScalar(xw.speed * delta));
@@ -1313,7 +1342,6 @@ def main():
                             }
                         }
 
-                        // 던진 검 및 순간이동
                         for (let i = thrownSwords.length - 1; i >= 0; i--) {
                             const ts = thrownSwords[i];
                             ts.mesh.position.add(ts.dir.clone().multiplyScalar(ts.speed * delta));
@@ -1331,7 +1359,6 @@ def main():
                             }
                         }
 
-                        // 어둠의 잔상 궤적 장판 (3초 지속)
                         for (let i = darkTrails.length - 1; i >= 0; i--) {
                             const dt = darkTrails[i];
                             dt.life -= delta;
@@ -1470,6 +1497,12 @@ def main():
                                             const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
                                             enemyPos.x += dir.x * enemy.speed * delta;
                                             enemyPos.z += dir.z * enemy.speed * delta;
+                                        }
+
+                                        // 레이저 주기적 발사
+                                        if (time - enemy.lastLaserTime > enemy.laserCooldown) {
+                                            enemy.lastLaserTime = time;
+                                            spawnDarkLaser(enemyPos, playerPos);
                                         }
 
                                         if (time - enemy.lastSkillTime > enemy.skillCooldown) {
