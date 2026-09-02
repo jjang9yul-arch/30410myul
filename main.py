@@ -33,9 +33,9 @@ def main():
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **패치 내역:**
-        - **화면 회전 조작감 개선**: 마우스 감도 최적화
-        - **1자 직선 브레스**: 플레이어를 정확히 노리는 직선 공격
-        - **화염 지대 이펙트**: 브레스가 착지한 지면에 불타는 장판 생성
+        - **방향키 화면 회전 추가**: 마우스 및 방향키(← → ↑ ↓)로 화면 회전 가능
+        - **1자 직선 브레스**: 드래곤의 정교한 일자 공격
+        - **화염 지대 이펙트**: 지면에 지속적으로 불타는 장판 생성
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -397,6 +397,7 @@ def main():
 
                 let scene, camera, renderer, gunMesh, muzzlePoint, muzzleFlashLight;
                 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
+                let rotateLeft = false, rotateRight = false, rotateUp = false, rotateDown = false; // 방향키 회전 변수
                 
                 let playerVelocityY = 0;
                 let isGrounded = true;
@@ -440,7 +441,7 @@ def main():
 
                     const container = document.getElementById('game-container');
                     
-                    // 마우스 회전 속도 개선 (감도 조정)
+                    // 마우스 감도 및 360도 자유 회전 처리
                     container.addEventListener('mousemove', (e) => {
                         if (!isGameActive || isShopOpen) return;
                         const sensitivity = 0.0035; 
@@ -801,13 +802,11 @@ def main():
                     playSound('slam');
                 }
 
-                // 1자 직선 발사 드래곤 브레스
                 function spawnDragonBreath(dragonPos, targetPos) {
                     playSound('breath');
                     const startPos = dragonPos.clone().add(new THREE.Vector3(0, 4.5, -3.0));
                     const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
 
-                    // 직선으로 30개의 구체를 빽빽하게 1자로 연사
                     for (let i = 0; i < 30; i++) {
                         setTimeout(() => {
                             if (!isGameActive) return;
@@ -820,14 +819,13 @@ def main():
 
                             breathParticles.push({
                                 mesh: pMesh,
-                                velocity: dir.clone().multiplyScalar(32.0), // 빠르고 정교한 1자 분사
+                                velocity: dir.clone().multiplyScalar(32.0),
                                 life: 2.5
                             });
                         }, i * 35);
                     }
                 }
 
-                // 불타는 자리에 생성되는 화염 지대 (장판)
                 function spawnFireGround(pos) {
                     const geo = new THREE.CircleGeometry(2.2, 16);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
@@ -838,8 +836,8 @@ def main():
 
                     fireGrounds.push({
                         mesh: mesh,
-                        life: 5.0, // 5초 동안 지면이 불탐
-                        damage: 15 // 초당 데미지
+                        life: 5.0,
+                        damage: 15
                     });
                 }
 
@@ -870,6 +868,10 @@ def main():
                         case 'KeyS': moveBackward = true; break;
                         case 'KeyA': moveLeft = true; break;
                         case 'KeyD': moveRight = true; break;
+                        case 'ArrowLeft': rotateLeft = true; break;
+                        case 'ArrowRight': rotateRight = true; break;
+                        case 'ArrowUp': rotateUp = true; break;
+                        case 'ArrowDown': rotateDown = true; break;
                         case 'ShiftLeft': isSprinting = true; break;
                         case 'Space': 
                             if (isGrounded) { playerVelocityY = JUMP_FORCE; isGrounded = false; }
@@ -902,6 +904,10 @@ def main():
                         case 'KeyS': moveBackward = false; break;
                         case 'KeyA': moveLeft = false; break;
                         case 'KeyD': moveRight = false; break;
+                        case 'ArrowLeft': rotateLeft = false; break;
+                        case 'ArrowRight': rotateRight = false; break;
+                        case 'ArrowUp': rotateUp = false; break;
+                        case 'ArrowDown': rotateDown = false; break;
                         case 'ShiftLeft': isSprinting = false; break;
                     }
                 }
@@ -1056,6 +1062,19 @@ def main():
 
                     if (isGameActive && !isShopOpen) {
                         if (isMouseDown && currentWeaponId === 4 && !isReloading) shoot();
+
+                        // 방향키 입력에 의한 화면 360도 회전 처리
+                        const keyRotateSpeed = 1.8;
+                        if (rotateLeft) yaw += keyRotateSpeed * delta;
+                        if (rotateRight) yaw -= keyRotateSpeed * delta;
+                        if (rotateUp) pitch += keyRotateSpeed * delta;
+                        if (rotateDown) pitch -= keyRotateSpeed * delta;
+
+                        pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+
+                        camera.rotation.order = "YXZ";
+                        camera.rotation.y = yaw;
+                        camera.rotation.x = pitch;
 
                         playerVelocityY += GRAVITY * delta;
                         camera.position.y += playerVelocityY * delta;
@@ -1255,20 +1274,17 @@ def main():
                             }
                         }
 
-                        // 1자 브레스 및 불타는 자리 판정
                         for (let i = breathParticles.length - 1; i >= 0; i--) {
                             const bp = breathParticles[i];
                             bp.mesh.position.add(bp.velocity.clone().multiplyScalar(delta));
                             bp.life -= delta;
 
-                            // 플레이어 명중 시
                             if (bp.mesh.position.distanceTo(playerPos) < 1.8) {
                                 playerHealth -= 18 * delta;
                                 updateHUD();
                                 if (playerHealth <= 0) endGame(false);
                             }
 
-                            // 지면에 닿았을 때 불타는 장판 생성
                             if (bp.mesh.position.y <= 0.2) {
                                 spawnFireGround(bp.mesh.position);
                                 scene.remove(bp.mesh);
@@ -1282,7 +1298,6 @@ def main():
                             }
                         }
 
-                        // 불타는 화염 지대 데미지 계산
                         for (let i = fireGrounds.length - 1; i >= 0; i--) {
                             const fg = fireGrounds[i];
                             fg.life -= delta;
