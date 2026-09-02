@@ -40,7 +40,7 @@ def main():
         - **상점 열기/닫기**: `B` 키 (산탄총 150G / 기관총 300G)
         - **이동**: WASD | **재장전**: R | **무기 교체**: 1, 2, 3, 4 키
         - **몬스터 디테일 업**: 디테일한 장갑과 빛나는 눈을 가진 디테일한 3D 적 모델 적용!
-        - **보스전**: **5라운드**마다 거대 타이탄 등장! (파동 → 파동 → 브레스 순서의 보스 공격 패턴 주의)
+        - **보스전**: **5라운드**마다 거대 타이탄 등장! (내려찍기 & 충격파 주의)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -262,7 +262,7 @@ def main():
             <div id="game-container">
                 <div id="hud">
                     라운드: <span id="round">1</span> | 
-                    체력: <span id="health" style="color: #00ffcc;">150</span> | 
+                    체력: <span id="health" style="color: #00ffcc;">100</span> | 
                     골드: <span id="money" style="color:#ffd700;">0</span>G | 
                     무기: <span id="weapon">권총</span> | 
                     탄약: <span id="ammo">12 / 12</span> | 
@@ -271,7 +271,7 @@ def main():
                 </div>
 
                 <div id="boss-hud">
-                    ⚠️ 보스 : <span id="boss-title">크로노스 타이탄</span> <span style="font-size:12px;color:#ff9ab5;">[파동 → 파동 → 브레스]</span>
+                    ⚠️ 보스 : <span id="boss-title">크로노스 타이탄</span>
                     <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
                 </div>
 
@@ -376,12 +376,14 @@ def main():
 
                 const WEAPONS = {
                     1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0.02, owned: true },
-                    2: { name: '소총', damage: 35, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, owned: true },
+                    2: { name: '소총', damage: 55, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, owned: true },
                     3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0.1, pellets: 8, owned: false, price: 150 },
-                    4: { name: '기관총', damage: 42, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 }
+                    4: { name: '기관총', damage: 65, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, owned: false, price: 300 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150;
+                let isMouseDown = false;
+                let bossAttackIndex = 0;
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
 
@@ -396,7 +398,7 @@ def main():
 
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], shockwaves = [], breaths = [], isGameActive = false, isShopOpen = false;
+                let enemies = [], shockwaves = [], isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
                 let bossEnemy = null;
 
@@ -445,7 +447,16 @@ def main():
                     container.addEventListener('mousedown', (e) => {
                         initAudio();
                         if (isShopOpen) return;
-                        if (isGameActive && e.button === 0 && !isReloading) shoot();
+                        if (isGameActive && e.button === 0) {
+                            isMouseDown = true;
+                            if (!isReloading) shoot();
+                        }
+                    });
+                    container.addEventListener('mouseup', (e) => {
+                        if (e.button === 0) isMouseDown = false;
+                    });
+                    container.addEventListener('mouseleave', () => {
+                        isMouseDown = false;
                     });
 
                     document.addEventListener('keydown', onKeyDown);
@@ -621,8 +632,6 @@ def main():
                     
                     shockwaves.forEach(s => scene.remove(s.mesh));
                     shockwaves = [];
-                    breaths.forEach(b => scene.remove(b.mesh));
-                    breaths = [];
 
                     playerHealth = 150;
                     camera.position.set(0, PLAYER_HEIGHT, 40);
@@ -698,112 +707,163 @@ def main():
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
 
-                    // 1. 거대하고 잘 보이는 보스 몸체 - 검정 대신 짙은 보라/붉은색
-                    const torsoGeo = new THREE.ConeGeometry(3.1, 4.8, 8);
-                    const armorMat = new THREE.MeshStandardMaterial({
-                        color: 0x5b0a78,
-                        metalness: 0.85,
-                        roughness: 0.22,
-                        emissive: 0x22002f,
-                        emissiveIntensity: 0.7
-                    });
-                    const torso = new THREE.Mesh(torsoGeo, armorMat);
-                    torso.rotation.x = Math.PI;
-                    torso.position.y = 4.0;
-                    group.add(torso);
+                    // 드래곤형 보스: 밝은 진홍색/보라색 갑주 + 뿔 + 날개 + 꼬리
+                    const armorMat = new THREE.MeshStandardMaterial({ color: 0x65152a, metalness: 0.75, roughness: 0.22, emissive: 0x250008, emissiveIntensity: 0.45 });
+                    const scaleMat = new THREE.MeshStandardMaterial({ color: 0x9b2335, metalness: 0.35, roughness: 0.45 });
+                    const wingMat = new THREE.MeshStandardMaterial({ color: 0x3d0d25, metalness: 0.35, roughness: 0.4, side: THREE.DoubleSide });
+                    const hornMat = new THREE.MeshStandardMaterial({ color: 0xf0a34a, metalness: 0.5, roughness: 0.25, emissive: 0x401000, emissiveIntensity: 0.3 });
 
-                    // 2. 붉은 거대 어깨 장갑
-                    const shoulderGeo = new THREE.BoxGeometry(5.6, 1.3, 2.4);
-                    const shoulderMat = new THREE.MeshStandardMaterial({
-                        color: 0xb0003a,
-                        metalness: 0.8,
-                        roughness: 0.18,
-                        emissive: 0x3a0012,
-                        emissiveIntensity: 0.8
-                    });
-                    const shoulder = new THREE.Mesh(shoulderGeo, shoulderMat);
-                    shoulder.position.y = 5.6;
-                    group.add(shoulder);
+                    // 몸통
+                    const body = new THREE.Mesh(new THREE.CapsuleGeometry(2.5, 3.2, 6, 12), armorMat);
+                    body.position.y = 3.7;
+                    body.scale.set(1.0, 1.15, 0.9);
+                    group.add(body);
 
-                    // 3. 위압적인 머리
-                    const headGeo = new THREE.DodecahedronGeometry(1.15, 1);
-                    const headMat = new THREE.MeshStandardMaterial({
-                        color: 0x35104d,
-                        metalness: 0.9,
-                        roughness: 0.15,
-                        emissive: 0x180021,
-                        emissiveIntensity: 0.6
-                    });
-                    const head = new THREE.Mesh(headGeo, headMat);
-                    head.position.y = 6.9;
+                    // 목 + 용 머리
+                    const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.65, 2.4, 8), scaleMat);
+                    neck.position.set(0, 6.0, -0.1);
+                    group.add(neck);
+
+                    const head = new THREE.Mesh(new THREE.SphereGeometry(1.55, 12, 8), armorMat);
+                    head.scale.set(1.15, 0.9, 1.35);
+                    head.position.set(0, 7.25, -0.65);
                     group.add(head);
 
-                    // 4. 거대한 붉은 안광
-                    const eyeGeo = new THREE.BoxGeometry(1.45, 0.3, 0.28);
-                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
-                    const eye = new THREE.Mesh(eyeGeo, eyeMat);
-                    eye.position.set(0, 6.9, -1.02);
-                    group.add(eye);
+                    // 주둥이
+                    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.78, 2.0, 8), scaleMat);
+                    snout.rotation.x = -Math.PI / 2;
+                    snout.position.set(0, 7.05, -2.0);
+                    group.add(snout);
 
-                    // 5. 머리 위 뿔 2개
-                    const hornGeo = new THREE.ConeGeometry(0.42, 1.8, 6);
-                    const hornMat = new THREE.MeshStandardMaterial({
-                        color: 0xd8b4ff,
-                        metalness: 0.7,
-                        roughness: 0.25,
-                        emissive: 0x3a0055,
-                        emissiveIntensity: 0.5
+                    // 뿔 2개
+                    [-1, 1].forEach(side => {
+                        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.9, 8), hornMat);
+                        horn.position.set(side * 0.85, 8.35, -0.45);
+                        horn.rotation.z = side * -0.35;
+                        horn.rotation.x = -0.15;
+                        group.add(horn);
                     });
-                    const hornL = new THREE.Mesh(hornGeo, hornMat);
-                    const hornR = new THREE.Mesh(hornGeo, hornMat);
-                    hornL.position.set(-0.75, 8.0, 0);
-                    hornR.position.set(0.75, 8.0, 0);
-                    hornL.rotation.z = -0.3;
-                    hornR.rotation.z = 0.3;
-                    group.add(hornL, hornR);
 
-                    // 6. 가슴 중앙의 발광 코어
-                    const coreGeo = new THREE.OctahedronGeometry(0.6, 0);
-                    const coreMat = new THREE.MeshBasicMaterial({ color: 0xff003c });
-                    const core = new THREE.Mesh(coreGeo, coreMat);
-                    core.position.set(0, 4.0, -2.7);
-                    group.add(core);
+                    // 발광하는 용의 눈
+                    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfff000 });
+                    [-1, 1].forEach(side => {
+                        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat);
+                        eye.position.set(side * 0.62, 7.45, -1.85);
+                        group.add(eye);
+                    });
 
-                    // 7. 등 뒤에 떠 있는 어둠의 구체
-                    const orbGeo = new THREE.SphereGeometry(0.35, 16, 16);
-                    const orbMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-                    for (let i = 0; i < 5; i++) {
-                        const orb = new THREE.Mesh(orbGeo, orbMat);
-                        const a = (i / 5) * Math.PI * 2;
-                        orb.position.set(Math.cos(a) * 3.2, 4.5 + Math.sin(a) * 1.8, 1.0);
-                        group.add(orb);
+                    // 거대한 날개 2장
+                    [-1, 1].forEach(side => {
+                        const wing = new THREE.Mesh(new THREE.ConeGeometry(3.6, 5.8, 4), wingMat);
+                        wing.position.set(side * 3.2, 5.2, 0.25);
+                        wing.rotation.z = side * (Math.PI / 2.7);
+                        wing.rotation.x = side * 0.12;
+                        wing.scale.set(1.0, 1.0, 0.45);
+                        group.add(wing);
+
+                        // 날개 끝 발톱
+                        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.4, 6), hornMat);
+                        claw.position.set(side * 5.0, 4.3, 0.1);
+                        claw.rotation.z = side * Math.PI / 2;
+                        group.add(claw);
+                    });
+
+                    // 꼬리: 뒤쪽으로 길게 이어지는 3단 원뿔
+                    for (let i = 0; i < 4; i++) {
+                        const tail = new THREE.Mesh(new THREE.ConeGeometry(1.15 - i * 0.22, 2.4, 8), scaleMat);
+                        tail.rotation.x = Math.PI / 2;
+                        tail.position.set(0, 2.6 - i * 0.25, 2.0 + i * 1.55);
+                        group.add(tail);
                     }
 
-                    const auraLight = new THREE.PointLight(0xff0044, 6, 28);
-                    auraLight.position.set(0, 5, 0);
+                    // 가슴의 발광 코어
+                    const core = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.62, 12, 12),
+                        new THREE.MeshBasicMaterial({ color: 0xff4a00 })
+                    );
+                    core.position.set(0, 4.3, -2.15);
+                    group.add(core);
+
+                    const auraLight = new THREE.PointLight(0xff3b00, 7, 28);
+                    auraLight.position.set(0, 5.5, -1);
                     group.add(auraLight);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 1200 + (round * 400);
+                    const maxHp = 950 + (round * 300);
                     bossEnemy = {
                         mesh: group,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 4.5,
-                        damage: 25,
+                        speed: 3.4,
+                        damage: 18,
                         lastAttack: 0,
-                        nextBossAttack: performance.now() + 2500,
-                        attackStep: 0, // 0=첫 파동, 1=두 번째 파동, 2=브레스
+                        lastSlam: performance.now(),
                         isSlamming: false,
                         slamPhase: 0,
-                        isBreathing: false,
-                        breathStart: 0,
-                        isBoss: true
+                        isBoss: true,
+                        attackIndex: 0,
+                        lastBossAttack: performance.now(),
+                        attackCooldown: 4200
                     };
 
                     enemies.push(bossEnemy);
+                }
+
+                // 드래곤이 실제 불꽃을 길게 뿜는 브레스
+                function createFireBreath(boss) {
+                    const playerPos = camera.position.clone();
+                    const origin = boss.mesh.position.clone().add(new THREE.Vector3(0, 7.0, -2.0));
+                    const dir = new THREE.Vector3().subVectors(playerPos, origin).normalize();
+                    const distance = Math.min(18, origin.distanceTo(playerPos));
+                    const center = origin.clone().add(dir.clone().multiplyScalar(distance * 0.5));
+
+                    const outer = new THREE.Mesh(
+                        new THREE.ConeGeometry(2.8, distance, 24, 1, true),
+                        new THREE.MeshBasicMaterial({ color: 0xff2a00, transparent: true, opacity: 0.42, side: THREE.DoubleSide })
+                    );
+                    outer.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                    outer.position.copy(center);
+                    scene.add(outer);
+
+                    const inner = new THREE.Mesh(
+                        new THREE.ConeGeometry(1.35, distance * 0.92, 20, 1, true),
+                        new THREE.MeshBasicMaterial({ color: 0xffd21f, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+                    );
+                    inner.quaternion.copy(outer.quaternion);
+                    inner.position.copy(origin.clone().add(dir.clone().multiplyScalar(distance * 0.46)));
+                    scene.add(inner);
+
+                    const flames = [];
+                    for (let i = 0; i < 12; i++) {
+                        const t = Math.random();
+                        const p = origin.clone().add(dir.clone().multiplyScalar(distance * t));
+                        p.x += (Math.random() - 0.5) * (1.0 + t * 3.0);
+                        p.y += (Math.random() - 0.5) * (1.0 + t * 2.0);
+                        p.z += (Math.random() - 0.5) * (1.0 + t * 3.0);
+                        const flame = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.25 + Math.random() * 0.35, 8, 8),
+                            new THREE.MeshBasicMaterial({ color: Math.random() > 0.45 ? 0xff3b00 : 0xffc21a, transparent: true, opacity: 0.85 })
+                        );
+                        flame.position.copy(p);
+                        scene.add(flame);
+                        flames.push(flame);
+                    }
+
+                    const hitDist = origin.distanceTo(playerPos);
+                    const playerHit = hitDist < distance + 1.5;
+                    if (playerHit) {
+                        playerHealth -= 28;
+                        updateHUD();
+                        if (playerHealth <= 0) endGame(false);
+                    }
+
+                    setTimeout(() => {
+                        scene.remove(outer);
+                        scene.remove(inner);
+                        flames.forEach(f => scene.remove(f));
+                    }, 850);
                 }
 
                 function createShockwave(x, z) {
@@ -821,57 +881,6 @@ def main():
                         speed: 22.0,
                         originX: x,
                         originZ: z,
-                        hasHitPlayer: false
-                    });
-
-                    playGunSound('slam');
-                }
-
-                function createBreath(boss) {
-                    if (!boss || !boss.mesh) return;
-                    const origin = boss.mesh.position.clone();
-                    origin.y = 4.8;
-                    const target = camera.position.clone();
-                    const dir = new THREE.Vector3().subVectors(target, origin);
-                    const length = Math.min(Math.max(dir.length(), 10), 32);
-                    dir.normalize();
-
-                    // 길게 뻗는 보라/붉은 브레스
-                    const geo = new THREE.ConeGeometry(2.8, length, 24, 1, true);
-                    const mat = new THREE.MeshBasicMaterial({
-                        color: 0xff1744,
-                        transparent: true,
-                        opacity: 0.55,
-                        side: THREE.DoubleSide,
-                        depthWrite: false
-                    });
-                    const mesh = new THREE.Mesh(geo, mat);
-                    mesh.position.copy(origin).addScaledVector(dir, length / 2);
-                    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-                    scene.add(mesh);
-
-                    // 브레스 중심의 밝은 에너지 코어
-                    const coreGeo = new THREE.CylinderGeometry(0.45, 1.1, length, 16, 1, true);
-                    const coreMat = new THREE.MeshBasicMaterial({
-                        color: 0xffd1e0,
-                        transparent: true,
-                        opacity: 0.45,
-                        side: THREE.DoubleSide,
-                        depthWrite: false
-                    });
-                    const core = new THREE.Mesh(coreGeo, coreMat);
-                    core.position.copy(mesh.position);
-                    core.quaternion.copy(mesh.quaternion);
-                    scene.add(core);
-
-                    breaths.push({
-                        mesh: mesh,
-                        core: core,
-                        origin: origin,
-                        dir: dir,
-                        length: length,
-                        start: performance.now(),
-                        duration: 1400,
                         hasHitPlayer: false
                     });
 
@@ -1017,13 +1026,12 @@ def main():
                     }
 
                     const healthElem = document.getElementById('health');
-                    if (playerHealth < 45) healthElem.style.color = '#ff3333';
-                    else if (playerHealth < 90) healthElem.style.color = '#ffaa00';
+                    if (playerHealth < 30) healthElem.style.color = '#ff3333';
+                    else if (playerHealth < 60) healthElem.style.color = '#ffaa00';
                     else healthElem.style.color = '#00ffcc';
                 }
 
                 function endGame(victory) {
-                    if (!isGameActive) return;
                     isGameActive = false;
                     isRoundCleared = victory;
                     gameOverScreen.style.display = 'block';
@@ -1033,8 +1041,6 @@ def main():
                     const btn = document.getElementById('game-over-btn');
 
                     if (victory) {
-                        money += 50; // 라운드 클리어 보너스
-                        updateHUD();
                         title.innerText = `라운드 ${round} 승리!`;
                         title.style.color = '#00ffcc';
                         desc.innerText = round % 5 === 0 ? '보스를 물리쳤습니다!' : '적을 모두 제압했습니다!';
@@ -1071,6 +1077,9 @@ def main():
                     prevTime = time;
 
                     if (isGameActive && !isShopOpen) {
+                        // 기관총은 좌클릭을 누르고 있는 동안 자동 연사
+                        if (isMouseDown && currentWeaponId === 4 && !isReloading) shoot();
+
                         playerVelocityY += GRAVITY * delta;
                         camera.position.y += playerVelocityY * delta;
 
@@ -1100,17 +1109,18 @@ def main():
                             const enemyPos = enemy.mesh.position;
 
                             if (enemy.isBoss) {
-                                // 보스 공격 패턴: 파동 → 파동 → 브레스 → 반복
-                                if (!enemy.isSlamming && !enemy.isBreathing && time >= enemy.nextBossAttack) {
-                                    if (enemy.attackStep < 2) {
+                                // 보스 공격 순서: 파동 -> 파동 -> 불 브레스 -> 반복
+                                if (!enemy.isSlamming && time - enemy.lastBossAttack > enemy.attackCooldown) {
+                                    if (enemy.attackIndex === 2) {
+                                        createFireBreath(enemy);
+                                        enemy.attackIndex = 0;
+                                    } else {
                                         enemy.isSlamming = true;
                                         enemy.slamPhase = 1;
-                                    } else {
-                                        enemy.isBreathing = true;
-                                        enemy.breathStart = time;
-                                        createBreath(enemy);
+                                        enemy.lastSlam = time;
+                                        enemy.attackIndex++;
                                     }
-                                    enemy.nextBossAttack = time + 3200;
+                                    enemy.lastBossAttack = time;
                                 }
 
                                 if (enemy.isSlamming) {
@@ -1123,24 +1133,16 @@ def main():
                                             enemyPos.y = 0;
                                             enemy.isSlamming = false;
                                             createShockwave(enemyPos.x, enemyPos.z);
-                                            enemy.attackStep++;
-                                            enemy.nextBossAttack = time + 2200;
                                         }
-                                    }
-                                } else if (enemy.isBreathing) {
-                                    if (time - enemy.breathStart >= 1400) {
-                                        enemy.isBreathing = false;
-                                        enemy.attackStep = 0;
-                                        enemy.nextBossAttack = time + 3000;
                                     }
                                 } else {
                                     const dist = enemyPos.distanceTo(playerPos);
-                                    if (dist > 3.0) {
+                                    if (dist > 4.0) {
                                         const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
                                         enemyPos.x += dir.x * enemy.speed * delta;
                                         enemyPos.z += dir.z * enemy.speed * delta;
                                         enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-                                    } else if (time - enemy.lastAttack > 800) {
+                                    } else if (time - enemy.lastAttack > 1000) {
                                         playerHealth -= enemy.damage;
                                         enemy.lastAttack = time;
                                         updateHUD();
@@ -1184,37 +1186,6 @@ def main():
                             if (wave.radius >= wave.maxRadius) {
                                 scene.remove(wave.mesh);
                                 shockwaves.splice(i, 1);
-                            }
-                        }
-
-                        // 보스 브레스 판정 및 페이드 아웃
-                        for (let i = breaths.length - 1; i >= 0; i--) {
-                            const breath = breaths[i];
-                            const elapsed = time - breath.start;
-                            const progress = Math.min(1, elapsed / breath.duration);
-                            breath.mesh.material.opacity = 0.55 * (1 - progress * 0.35);
-                            breath.core.material.opacity = 0.45 * (1 - progress * 0.45);
-
-                            // 플레이어가 브레스 직선과 가까우면 피해
-                            if (!breath.hasHitPlayer) {
-                                const toPlayer = new THREE.Vector3().subVectors(playerPos, breath.origin);
-                                const along = toPlayer.dot(breath.dir);
-                                if (along > 0 && along < breath.length) {
-                                    const closest = breath.origin.clone().addScaledVector(breath.dir, along);
-                                    const distanceFromBeam = playerPos.distanceTo(closest);
-                                    if (distanceFromBeam < 2.8) {
-                                        playerHealth -= 45;
-                                        breath.hasHitPlayer = true;
-                                        updateHUD();
-                                        if (playerHealth <= 0) endGame(false);
-                                    }
-                                }
-                            }
-
-                            if (elapsed >= breath.duration) {
-                                scene.remove(breath.mesh);
-                                scene.remove(breath.core);
-                                breaths.splice(i, 1);
                             }
                         }
                     }
