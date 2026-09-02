@@ -32,13 +32,12 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **주요 기능 및 조작법:**
-        - **무적 모드**: 플레이어의 체력이 닳지 않습니다.
-        - **골드 및 상점**: 적 처치 시 +20골드 | **상점(B 키)**에서 200골드로 기관총 구매 가능
-        - **마우스 이동 / 드래그**: 시점 조준
+        **주요 특징 및 조작법:**
+        - **화면 클릭**: 마우스 커서 숨김 및 화면 중앙 조준점 고정
+        - **마우스 이동**: 시점 조준
         - **WASD**: 이동 | **Shift**: 천천히 걷기
-        - **마우스 좌클릭 / Space**: 사격 (1인칭 총기 모델 및 총소리 출력)
-        - **R**: 재장전 | **B**: 상점 열기/닫기
+        - **마우스 좌클릭 / Space**: 사격 (개선된 오디오 및 기관총 전용 모델)
+        - **R**: 재장전 | **B**: 상점 열기/닫기 (200G로 기관총 구매)
         - **1, 2, 3, 4**: 무기 교체
         """)
         
@@ -67,7 +66,7 @@ def main():
                     width: 100vw;
                     height: 80vh;
                     position: relative;
-                    cursor: crosshair;
+                    cursor: none; /* OS 마우스 포인터 숨김 */
                 }
                 #hud {
                     position: absolute;
@@ -80,23 +79,37 @@ def main():
                     pointer-events: none;
                     z-index: 10;
                 }
+                /* 화면 중앙 단일 조준점 고정 */
                 #crosshair {
                     position: absolute;
                     top: 50%;
                     left: 50%;
-                    width: 10px;
-                    height: 10px;
+                    width: 20px;
+                    height: 20px;
                     transform: translate(-50%, -50%);
                     pointer-events: none;
                     z-index: 10;
                 }
-                #crosshair::before, #crosshair::after {
+                #crosshair::before {
                     content: '';
                     position: absolute;
+                    top: 9px;
+                    left: 0;
+                    width: 20px;
+                    height: 2px;
                     background: #00ffcc;
+                    box-shadow: 0 0 4px #00ffcc;
                 }
-                #crosshair::before { top: 4px; left: -5px; width: 20px; height: 2px; }
-                #crosshair::after { top: -5px; left: 4px; width: 2px; height: 20px; }
+                #crosshair::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 9px;
+                    width: 2px;
+                    height: 20px;
+                    background: #00ffcc;
+                    box-shadow: 0 0 4px #00ffcc;
+                }
                 
                 #start-overlay {
                     position: absolute;
@@ -110,6 +123,7 @@ def main():
                     border-radius: 12px;
                     z-index: 20;
                     border: 2px solid #00ffcc;
+                    cursor: default;
                 }
                 #start-btn {
                     margin-top: 15px;
@@ -150,6 +164,7 @@ def main():
                     z-index: 25;
                     min-width: 300px;
                     text-align: center;
+                    cursor: default;
                 }
                 .buy-btn {
                     margin-top: 10px;
@@ -178,6 +193,7 @@ def main():
                     padding: 30px;
                     border-radius: 10px;
                     z-index: 30;
+                    cursor: default;
                 }
             </style>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -203,7 +219,7 @@ def main():
                     <hr style="border-color: #444;">
                     <div style="margin: 15px 0; text-align: left;">
                         <h4>🔫 기관총 (LMG)</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">데미지: 40 | 연사속도: 매우 빠름 | 탄창: 100발</p>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">골드 모델링 | 높은 연사 속도 | 탄창: 100발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 200G</p>
                         <button id="buy-lmg-btn" class="buy-btn" onclick="buyWeapon(4)">기관총 구매 (200G)</button>
                     </div>
@@ -212,65 +228,74 @@ def main():
                 
                 <div id="start-overlay">
                     <h2>🎯 게임 준비 완료</h2>
-                    <p style="color: #ccc; margin-bottom: 5px;">체력이 닳지 않는 무적 상태로 플레이합니다.</p>
+                    <p style="color: #ccc; margin-bottom: 5px;">버튼을 누르면 소리 및 화면 고정이 활성화됩니다.</p>
                     <button id="start-btn" onclick="startGame()">전투 시작</button>
                 </div>
 
                 <div id="game-over">
-                    <h1 id="game-over-title">라운드 종료</h1>
+                    <h1 id="game-over-title">라운드 승리!</h1>
                     <button onclick="nextRound()" style="font-size: 20px; padding: 10px 20px; cursor: pointer;">다음 라운드</button>
                 </div>
             </div>
 
             <script>
-                // Web Audio API 기반 오디오 생성기
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                // 오디오 엔진 초기화 보완
+                let audioCtx = null;
                 
-                function playGunSound(type) {
+                function initAudio() {
+                    if (!audioCtx) {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
                     if (audioCtx.state === 'suspended') {
                         audioCtx.resume();
                     }
+                }
+
+                function playGunSound(type) {
+                    initAudio();
+                    if (!audioCtx) return;
+
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     
-                    if (type === 4) { // 기관총
+                    if (type === 4) { // 기관총 (묵직하고 빠른 사격음)
                         osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.12);
+                        osc.frequency.setValueAtTime(160, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
+                        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 0.1);
+                    } else if (type === 3) { // 산탄총
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(90, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.2);
+                        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 0.2);
+                    } else { // 권총 및 소총
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.12);
                         gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
                         osc.connect(gain);
                         gain.connect(audioCtx.destination);
                         osc.start();
                         osc.stop(audioCtx.currentTime + 0.12);
-                    } else if (type === 3) { // 산탄총
-                        osc.type = 'square';
-                        osc.frequency.setValueAtTime(80, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.25);
-                        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.25);
-                    } else { // 권총 및 소총
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.15);
-                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start();
-                        osc.stop(audioCtx.currentTime + 0.15);
                     }
                 }
 
-                // 무기 옵션 설정
+                // 무기 정보
                 const WEAPONS = {
-                    1: { name: '권총', damage: 25, range: 40, fireRate: 300, magSize: 12, reloadTime: 1200, recoil: 0.02, color: 0x888888 },
-                    2: { name: '소총', damage: 35, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, color: 0x335533 },
-                    3: { name: '산탄총', damage: 15, range: 15, fireRate: 800, magSize: 6, reloadTime: 2500, recoil: 0.1, pellets: 8, color: 0x553333 },
+                    1: { name: '권총', damage: 25, range: 40, fireRate: 300, magSize: 12, reloadTime: 1200, recoil: 0.02, color: 0x777777 },
+                    2: { name: '소총', damage: 35, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0.04, color: 0x225522 },
+                    3: { name: '산탄총', damage: 15, range: 15, fireRate: 800, magSize: 6, reloadTime: 2500, recoil: 0.1, pellets: 8, color: 0x552222 },
                     4: { name: '기관총', damage: 40, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0.03, color: 0xd4af37, owned: false }
                 };
 
@@ -284,8 +309,6 @@ def main():
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
                 let enemies = [], walls = [], isGameActive = false, isShopOpen = false;
 
-                let isMouseDown = false;
-                let previousMousePosition = { x: 0, y: 0 };
                 let pitch = 0, yaw = 0;
 
                 const startOverlay = document.getElementById('start-overlay');
@@ -293,13 +316,13 @@ def main():
 
                 function init() {
                     scene = new THREE.Scene();
-                    scene.background = new THREE.Color(0x222233);
-                    scene.fog = new THREE.Fog(0x222233, 0, 75);
+                    scene.background = new THREE.Color(0x1a1a24);
+                    scene.fog = new THREE.Fog(0x1a1a24, 0, 75);
 
                     camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight * 0.8), 0.1, 1000);
                     camera.position.y = 1.6;
 
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
                     scene.add(ambientLight);
 
                     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -311,34 +334,27 @@ def main():
                     const container = document.getElementById('game-container');
                     container.appendChild(renderer.domElement);
 
-                    // 1인칭 총기 모델링 배치
                     createGunModel();
 
-                    container.addEventListener('mousedown', (e) => {
-                        if (isShopOpen) return;
-                        isMouseDown = true;
-                        previousMousePosition = { x: e.clientX, y: e.clientY };
-                        if (isGameActive && e.button === 0 && !isReloading) shoot();
-                    });
-
+                    // 마우스 이동 시 시점 제어
                     container.addEventListener('mousemove', (e) => {
                         if (!isGameActive || isShopOpen) return;
 
-                        const deltaX = e.clientX - previousMousePosition.x;
-                        const deltaY = e.clientY - previousMousePosition.y;
-
-                        yaw -= deltaX * 0.003;
-                        pitch -= deltaY * 0.003;
+                        yaw -= e.movementX * 0.0025;
+                        pitch -= e.movementY * 0.0025;
                         pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
 
                         camera.rotation.order = "YXZ";
                         camera.rotation.y = yaw;
                         camera.rotation.x = pitch;
-
-                        previousMousePosition = { x: e.clientX, y: e.clientY };
                     });
 
-                    window.addEventListener('mouseup', () => { isMouseDown = false; });
+                    container.addEventListener('mousedown', (e) => {
+                        initAudio();
+                        if (isShopOpen) return;
+                        if (isGameActive && e.button === 0 && !isReloading) shoot();
+                    });
+
                     document.addEventListener('keydown', onKeyDown);
                     document.addEventListener('keyup', onKeyUp);
 
@@ -347,26 +363,34 @@ def main():
                     animate();
                 }
 
-                // 1인칭 화면에 표시되는 3D 총기 생성
+                // 1인칭 총기 모델링 (기관총 전용 형태 및 금색 텍스쳐 스타일 포함)
                 function createGunModel() {
                     if (gunMesh) camera.remove(gunMesh);
 
                     const gunGroup = new THREE.Group();
                     const w = WEAPONS[currentWeaponId];
 
-                    const barrelGeo = new THREE.BoxGeometry(0.1, 0.1, 0.6);
-                    const barrelMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
-                    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
-                    barrel.position.set(0.2, -0.2, -0.5);
+                    if (currentWeaponId === 4) { // 기관총 (대형 금색 모델링)
+                        const bodyGeo = new THREE.BoxGeometry(0.16, 0.18, 0.8);
+                        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 });
+                        const body = new THREE.Mesh(bodyGeo, bodyMat);
+                        body.position.set(0.22, -0.2, -0.5);
 
-                    const handleGeo = new THREE.BoxGeometry(0.08, 0.2, 0.08);
-                    const handleMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-                    const handle = new THREE.Mesh(handleGeo, handleMat);
-                    handle.position.set(0.2, -0.3, -0.35);
-                    handle.rotation.x = 0.2;
+                        const magGeo = new THREE.BoxGeometry(0.12, 0.22, 0.2);
+                        const magMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5 });
+                        const mag = new THREE.Mesh(magGeo, magMat);
+                        mag.position.set(0.22, -0.32, -0.45);
 
-                    gunGroup.add(barrel);
-                    gunGroup.add(handle);
+                        gunGroup.add(body);
+                        gunGroup.add(mag);
+                    } else { // 기타 총기
+                        const barrelGeo = new THREE.BoxGeometry(0.1, 0.1, 0.55);
+                        const barrelMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.7, roughness: 0.3 });
+                        const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+                        barrel.position.set(0.2, -0.2, -0.45);
+
+                        gunGroup.add(barrel);
+                    }
 
                     gunMesh = gunGroup;
                     camera.add(gunMesh);
@@ -374,6 +398,7 @@ def main():
                 }
 
                 function startGame() {
+                    initAudio();
                     startOverlay.style.display = 'none';
                     isGameActive = true;
                 }
@@ -405,12 +430,12 @@ def main():
 
                 function buildMap() {
                     const floorGeo = new THREE.PlaneGeometry(100, 100);
-                    const floorMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+                    const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
                     const floor = new THREE.Mesh(floorGeo, floorMat);
                     floor.rotation.x = -Math.PI / 2;
                     scene.add(floor);
 
-                    const wallMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.5 });
+                    const wallMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.5 });
                     const createBox = (w, h, d, x, y, z) => {
                         const geo = new THREE.BoxGeometry(w, h, d);
                         const mesh = new THREE.Mesh(geo, wallMat);
@@ -446,13 +471,30 @@ def main():
                     updateHUD();
                 }
 
+                // 디테일해진 적 로봇 모델 생성
                 function createEnemy(x, z) {
                     const group = new THREE.Group();
-                    const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.8, 8);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xee3333 });
+
+                    // 몸통
+                    const bodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.5);
+                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, metalness: 0.5 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
-                    body.position.y = 0.9;
+                    body.position.y = 1.0;
                     group.add(body);
+
+                    // 머리
+                    const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+                    const headMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+                    const head = new THREE.Mesh(headGeo, headMat);
+                    head.position.y = 1.8;
+                    group.add(head);
+
+                    // 총기 디테일
+                    const gunGeo = new THREE.BoxGeometry(0.1, 0.1, 0.6);
+                    const gunMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                    const gun = new THREE.Mesh(gunGeo, gunMat);
+                    gun.position.set(0.45, 1.0, -0.3);
+                    group.add(gun);
 
                     group.position.set(x, 0, z);
                     scene.add(group);
@@ -462,12 +504,12 @@ def main():
                         hp: 50 + (round * 10),
                         maxHp: 50 + (round * 10),
                         speed: 3 + (Math.random() * 1.5),
-                        damage: 10,
-                        lastAttack: 0
+                        damage: 10
                     });
                 }
 
                 function onKeyDown(e) {
+                    initAudio();
                     if (!isGameActive) return;
                     if (e.code === 'KeyB') { toggleShop(); return; }
                     if (isShopOpen) return;
@@ -526,15 +568,12 @@ def main():
                     lastShotTime = now;
                     currentAmmo--;
                     
-                    // 사격음 재생
                     playGunSound(currentWeaponId);
-                    
                     updateHUD();
 
-                    // 1인칭 총 반동 애니메이션
                     if (gunMesh) {
-                        gunMesh.position.z += 0.05;
-                        setTimeout(() => { if (gunMesh) gunMesh.position.z -= 0.05; }, 50);
+                        gunMesh.position.z += 0.06;
+                        setTimeout(() => { if (gunMesh) gunMesh.position.z -= 0.06; }, 40);
                     }
 
                     pitch += w.recoil;
@@ -547,19 +586,19 @@ def main():
                         const spreadY = (Math.random() - 0.5) * (w.recoil);
                         raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
                         
-                        const enemyMeshes = enemies.map(e => e.mesh.children[0]);
+                        const enemyMeshes = enemies.flatMap(e => e.mesh.children);
                         const intersects = raycaster.intersectObjects(enemyMeshes);
 
                         if (intersects.length > 0 && intersects[0].distance <= w.range) {
                             const hitMesh = intersects[0].object;
-                            const enemyObj = enemies.find(e => e.mesh.children[0] === hitMesh);
+                            const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh));
                             if (enemyObj) {
                                 enemyObj.hp -= w.damage;
                                 if (enemyObj.hp <= 0) {
                                     scene.remove(enemyObj.mesh);
                                     enemies = enemies.filter(e => e !== enemyObj);
                                     kills++;
-                                    money += 20; // 적 처치 시 20골드 지급
+                                    money += 20;
                                     updateHUD();
                                     if (enemies.length === 0) endRound(true);
                                 }
@@ -580,9 +619,6 @@ def main():
                 function endRound(victory) {
                     isGameActive = false;
                     gameOverScreen.style.display = 'block';
-                    const title = document.getElementById('game-over-title');
-                    title.innerText = `라운드 ${round} 승리!`;
-                    title.style.color = '#00ffcc';
                 }
 
                 function nextRound() {
@@ -616,7 +652,6 @@ def main():
 
                         const playerPos = camera.position;
                         
-                        // 적 AI 이동 (무적 상태이므로 공격을 받아도 체력이 감소하지 않음)
                         enemies.forEach(enemy => {
                             const enemyPos = enemy.mesh.position;
                             const dist = enemyPos.distanceTo(playerPos);
@@ -642,3 +677,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
