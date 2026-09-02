@@ -33,9 +33,9 @@ def main():
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **패치 내역:**
-        - **드래곤 보스 강화**: 체력 증가(1600), 브레스 지속시간 및 범위 대폭 확대, 충격파 범위 증가
-        - **디테일한 3D 모델링**: 드래곤(얼굴, 눈, 꼬리, 날개) & 소드마스터(투구, 팔, 다리, 정교한 검)
-        - **M 키 치트**: 라운드 스킵 & +100 Gold 지급
+        - **화면 회전 조작감 개선**: 마우스 감도 최적화
+        - **1자 직선 브레스**: 플레이어를 정확히 노리는 직선 공격
+        - **화염 지대 이펙트**: 브레스가 착지한 지면에 불타는 장판 생성
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -406,7 +406,7 @@ def main():
 
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], shockwaves = [], swordWaves = [], breathParticles = [], explosionEffects = [], visualEffects = [];
+                let enemies = [], shockwaves = [], swordWaves = [], breathParticles = [], fireGrounds = [], explosionEffects = [], visualEffects = [];
                 let isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
                 let roundRewardGiven = false;
@@ -439,11 +439,14 @@ def main():
                     createGunModel();
 
                     const container = document.getElementById('game-container');
+                    
+                    // 마우스 회전 속도 개선 (감도 조정)
                     container.addEventListener('mousemove', (e) => {
                         if (!isGameActive || isShopOpen) return;
-                        yaw -= e.movementX * 0.0025;
-                        pitch -= e.movementY * 0.0025;
-                        pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+                        const sensitivity = 0.0035; 
+                        yaw -= e.movementX * sensitivity;
+                        pitch -= e.movementY * sensitivity;
+                        pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
 
                         camera.rotation.order = "YXZ";
                         camera.rotation.y = yaw;
@@ -572,6 +575,8 @@ def main():
                     swordWaves = [];
                     breathParticles.forEach(b => scene.remove(b.mesh));
                     breathParticles = [];
+                    fireGrounds.forEach(fg => scene.remove(fg.mesh));
+                    fireGrounds = [];
                     explosionEffects.forEach(ex => scene.remove(ex.mesh));
                     explosionEffects = [];
                     visualEffects.forEach(ve => scene.remove(ve.mesh));
@@ -621,20 +626,17 @@ def main():
                     });
                 }
 
-                // 디테일한 드래곤 보스 생성 (얼굴, 눈, 입, 대형 날개, 가시 꼬리)
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
                     const skinMat = new THREE.MeshStandardMaterial({ color: 0x991122, metalness: 0.5, roughness: 0.3 });
                     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
                     const wingMat = new THREE.MeshStandardMaterial({ color: 0xbb1100, side: THREE.DoubleSide });
 
-                    // 몸통
                     const body = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6.5, 8), skinMat);
                     body.rotation.x = Math.PI / 2;
                     body.position.set(0, 3.8, 0);
                     group.add(body);
 
-                    // 머리 및 입
                     const headGroup = new THREE.Group();
                     headGroup.position.set(0, 4.8, -3.2);
 
@@ -645,7 +647,6 @@ def main():
                     snout.position.set(0, -0.2, -1.4);
                     headGroup.add(snout);
 
-                    // 양쪽 눈
                     const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
                     leftEye.position.set(-0.7, 0.3, -0.6);
                     const rightEye = leftEye.clone();
@@ -655,7 +656,6 @@ def main():
 
                     group.add(headGroup);
 
-                    // 대형 3D 날개
                     const leftWing = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.1, 3.0), wingMat);
                     leftWing.position.set(-4.2, 4.5, 0.5);
                     leftWing.rotation.z = Math.PI / 12;
@@ -669,7 +669,6 @@ def main():
                     group.add(leftWing);
                     group.add(rightWing);
 
-                    // 가시 꼬리
                     const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 1.2, 6.0, 8), skinMat);
                     tail.rotation.x = Math.PI / 3;
                     tail.position.set(0, 2.2, 4.0);
@@ -678,7 +677,7 @@ def main():
                     group.position.set(x, 0, z);
                     scene.add(group);
 
-                    const maxHp = 1600; // 체력 상향
+                    const maxHp = 1600;
                     bossEnemy = {
                         mesh: group,
                         hp: maxHp,
@@ -689,24 +688,21 @@ def main():
                         state: 'walk',
                         jumpVelocityY: 0,
                         lastSkillTime: performance.now(),
-                        skillCooldown: 3200
+                        skillCooldown: 3000
                     };
                     enemies.push(bossEnemy);
                 }
 
-                // 디테일한 소드마스터 생성 (머리, 투구, 눈, 양 팔, 양 다리, 거대 레이저 검)
                 function createSwordBossEnemy(x, z) {
                     const group = new THREE.Group();
                     const armorMat = new THREE.MeshStandardMaterial({ color: 0x151522, metalness: 0.9, roughness: 0.2 });
                     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
                     const swordMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 0.9 });
 
-                    // 몸통
                     const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.4, 1.0), armorMat);
                     torso.position.y = 2.6;
                     group.add(torso);
 
-                    // 머리 (투구 및 빛나는 눈)
                     const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), armorMat);
                     head.position.y = 4.2;
                     
@@ -715,7 +711,6 @@ def main():
                     head.add(visior);
                     group.add(head);
 
-                    // 양 팔
                     const armGeo = new THREE.BoxGeometry(0.5, 2.0, 0.5);
                     const leftArm = new THREE.Mesh(armGeo, armorMat);
                     leftArm.position.set(-1.2, 2.6, 0);
@@ -725,7 +720,6 @@ def main():
                     group.add(leftArm);
                     group.add(rightArm);
 
-                    // 양 다리
                     const legGeo = new THREE.BoxGeometry(0.6, 2.2, 0.6);
                     const leftLeg = new THREE.Mesh(legGeo, armorMat);
                     leftLeg.position.set(-0.5, 1.1, 0);
@@ -735,7 +729,6 @@ def main():
                     group.add(leftLeg);
                     group.add(rightLeg);
 
-                    // 대형검
                     const swordGroup = new THREE.Group();
                     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.2, 0.6), swordMat);
                     blade.position.y = 2.6;
@@ -748,7 +741,6 @@ def main():
                     swordGroup.rotation.x = Math.PI / 4;
                     group.add(swordGroup);
 
-                    // 기 모으기 아우라
                     const auraGeo = new THREE.SphereGeometry(2.8, 16, 16);
                     const auraMat = new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0 });
                     const auraMesh = new THREE.Mesh(auraGeo, auraMat);
@@ -809,32 +801,52 @@ def main():
                     playSound('slam');
                 }
 
-                // 강화된 드래곤 브레스 발사 (연사 수량 45개, 오랫동안 지속 분사)
-                function spawnDragonBreath(dragonPos, forwardDir) {
+                // 1자 직선 발사 드래곤 브레스
+                function spawnDragonBreath(dragonPos, targetPos) {
                     playSound('breath');
-                    for (let i = 0; i < 45; i++) {
-                        const pGeo = new THREE.SphereGeometry(0.4 + Math.random()*0.5, 8, 8);
-                        const pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xff2200 : 0xffaa00, transparent: true, opacity: 0.85 });
-                        const pMesh = new THREE.Mesh(pGeo, pMat);
-                        
-                        const startPos = dragonPos.clone().add(new THREE.Vector3(0, 4.5, -3.0));
-                        pMesh.position.copy(startPos);
-                        
-                        const spreadDir = forwardDir.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.6)).normalize();
-                        scene.add(pMesh);
+                    const startPos = dragonPos.clone().add(new THREE.Vector3(0, 4.5, -3.0));
+                    const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
 
-                        breathParticles.push({
-                            mesh: pMesh,
-                            velocity: spreadDir.multiplyScalar(20.0 + Math.random()*14.0),
-                            life: 2.2 // 오래 지속
-                        });
+                    // 직선으로 30개의 구체를 빽빽하게 1자로 연사
+                    for (let i = 0; i < 30; i++) {
+                        setTimeout(() => {
+                            if (!isGameActive) return;
+                            const pGeo = new THREE.SphereGeometry(0.6, 12, 12);
+                            const pMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.9 });
+                            const pMesh = new THREE.Mesh(pGeo, pMat);
+                            
+                            pMesh.position.copy(startPos);
+                            scene.add(pMesh);
+
+                            breathParticles.push({
+                                mesh: pMesh,
+                                velocity: dir.clone().multiplyScalar(32.0), // 빠르고 정교한 1자 분사
+                                life: 2.5
+                            });
+                        }, i * 35);
                     }
+                }
+
+                // 불타는 자리에 생성되는 화염 지대 (장판)
+                function spawnFireGround(pos) {
+                    const geo = new THREE.CircleGeometry(2.2, 16);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.rotation.x = -Math.PI / 2;
+                    mesh.position.set(pos.x, 0.05, pos.z);
+                    scene.add(mesh);
+
+                    fireGrounds.push({
+                        mesh: mesh,
+                        life: 5.0, // 5초 동안 지면이 불탐
+                        damage: 15 // 초당 데미지
+                    });
                 }
 
                 function createExplosionEffect(pos) {
                     playSound('explosion');
                     const geo = new THREE.SphereGeometry(1.2, 16, 16);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 1.0 });
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 1.0 });
                     const mesh = new THREE.Mesh(geo, mat);
                     mesh.position.copy(pos);
                     mesh.position.y = 1.0;
@@ -1116,12 +1128,11 @@ def main():
 
                                         if (time - enemy.lastSkillTime > enemy.skillCooldown) {
                                             enemy.lastSkillTime = time;
-                                            if (Math.random() > 0.4) {
+                                            if (Math.random() > 0.5) {
                                                 enemy.state = 'jumping';
                                                 enemy.jumpVelocityY = 18.0;
                                             } else {
-                                                const forwardDir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
-                                                spawnDragonBreath(enemyPos, forwardDir);
+                                                spawnDragonBreath(enemyPos, playerPos);
                                             }
                                         }
                                     } else if (enemy.state === 'jumping') {
@@ -1131,7 +1142,7 @@ def main():
                                         if (enemyPos.y <= 0) {
                                             enemyPos.y = 0;
                                             enemy.state = 'walk';
-                                            createShockwave(enemyPos.clone(), 24.0, 40); // 넓어진 충격파 범위 (24.0)
+                                            createShockwave(enemyPos.clone(), 24.0, 40);
                                         }
                                     }
                                 } else if (enemy.bossType === 'blade') {
@@ -1244,20 +1255,51 @@ def main():
                             }
                         }
 
+                        // 1자 브레스 및 불타는 자리 판정
                         for (let i = breathParticles.length - 1; i >= 0; i--) {
                             const bp = breathParticles[i];
                             bp.mesh.position.add(bp.velocity.clone().multiplyScalar(delta));
                             bp.life -= delta;
 
-                            if (bp.mesh.position.distanceTo(playerPos) < 2.0) {
-                                playerHealth -= 12 * delta;
+                            // 플레이어 명중 시
+                            if (bp.mesh.position.distanceTo(playerPos) < 1.8) {
+                                playerHealth -= 18 * delta;
                                 updateHUD();
                                 if (playerHealth <= 0) endGame(false);
+                            }
+
+                            // 지면에 닿았을 때 불타는 장판 생성
+                            if (bp.mesh.position.y <= 0.2) {
+                                spawnFireGround(bp.mesh.position);
+                                scene.remove(bp.mesh);
+                                breathParticles.splice(i, 1);
+                                continue;
                             }
 
                             if (bp.life <= 0) {
                                 scene.remove(bp.mesh);
                                 breathParticles.splice(i, 1);
+                            }
+                        }
+
+                        // 불타는 화염 지대 데미지 계산
+                        for (let i = fireGrounds.length - 1; i >= 0; i--) {
+                            const fg = fireGrounds[i];
+                            fg.life -= delta;
+                            fg.mesh.material.opacity = Math.min(0.7, fg.life * 0.2);
+
+                            const distToPlayer = new THREE.Vector2(fg.mesh.position.x, fg.mesh.position.z)
+                                .distanceTo(new THREE.Vector2(playerPos.x, playerPos.z));
+
+                            if (distToPlayer < 2.2 && playerPos.y <= PLAYER_HEIGHT + 0.5) {
+                                playerHealth -= fg.damage * delta;
+                                updateHUD();
+                                if (playerHealth <= 0) endGame(false);
+                            }
+
+                            if (fg.life <= 0) {
+                                scene.remove(fg.mesh);
+                                fireGrounds.splice(i, 1);
                             }
                         }
 
