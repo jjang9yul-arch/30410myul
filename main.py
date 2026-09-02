@@ -33,7 +33,7 @@ def main():
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **조작법 및 신규 기능:**
-        - **사격**: 마우스 좌클릭 / `Space` / `J` 키
+        - **사격**: 마우스 좌클릭 / `Space` / `E` 키
         - **전체 화면 전환**: `O` 키 또는 오른쪽 상단 버튼
         - **상점 열기/닫기**: `B` 키 (산탄총 150G / 기관총 300G)
         - **이동**: WASD | **천천히 걷기**: Shift | **재장전**: R
@@ -298,7 +298,7 @@ def main():
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     
-                    if (type === 1) { // 권총
+                    if (type === 1) {
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(320, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.12);
@@ -308,7 +308,7 @@ def main():
                         gain.connect(audioCtx.destination);
                         osc.start();
                         osc.stop(audioCtx.currentTime + 0.12);
-                    } else if (type === 2) { // 소총
+                    } else if (type === 2) {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(240, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.15);
@@ -318,7 +318,7 @@ def main():
                         gain.connect(audioCtx.destination);
                         osc.start();
                         osc.stop(audioCtx.currentTime + 0.15);
-                    } else if (type === 3) { // 산탄총
+                    } else if (type === 3) {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(120, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.25);
@@ -328,7 +328,7 @@ def main():
                         gain.connect(audioCtx.destination);
                         osc.start();
                         osc.stop(audioCtx.currentTime + 0.25);
-                    } else if (type === 4) { // 기관총
+                    } else if (type === 4) {
                         osc.type = 'sawtooth';
                         osc.frequency.setValueAtTime(180, audioCtx.currentTime);
                         osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.08);
@@ -438,9 +438,8 @@ def main():
                     if (gunMesh) camera.remove(gunMesh);
 
                     const gunGroup = new THREE.Group();
-                    const w = WEAPONS[currentWeaponId];
 
-                    if (currentWeaponId === 4) { // 기관총
+                    if (currentWeaponId === 4) {
                         const bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.85);
                         const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
                         const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -453,7 +452,7 @@ def main():
 
                         gunGroup.add(body);
                         gunGroup.add(mag);
-                    } else if (currentWeaponId === 3) { // 산탄총
+                    } else if (currentWeaponId === 3) {
                         const barrelGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8);
                         const barrelMat = new THREE.MeshStandardMaterial({ color: 0xff6600, metalness: 0.8, roughness: 0.2 });
                         const barrel = new THREE.Mesh(barrelGeo, barrelMat);
@@ -467,14 +466,14 @@ def main():
 
                         gunGroup.add(barrel);
                         gunGroup.add(stock);
-                    } else if (currentWeaponId === 2) { // 소총
+                    } else if (currentWeaponId === 2) {
                         const barrelGeo = new THREE.BoxGeometry(0.1, 0.12, 0.65);
                         const barrelMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, metalness: 0.8, roughness: 0.2 });
                         const barrel = new THREE.Mesh(barrelGeo, barrelMat);
                         barrel.position.set(0.2, -0.2, -0.45);
 
                         gunGroup.add(barrel);
-                    } else { // 권총
+                    } else {
                         const slideGeo = new THREE.BoxGeometry(0.08, 0.1, 0.35);
                         const slideMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9, roughness: 0.1 });
                         const slide = new THREE.Mesh(slideGeo, slideMat);
@@ -536,7 +535,6 @@ def main():
                 }
 
                 function buildMap() {
-                    // 화려한 사이버펑크 스타일 맵
                     const gridHelper = new THREE.GridHelper(100, 50, 0x00ffcc, 0x333355);
                     gridHelper.position.y = 0.01;
                     scene.add(gridHelper);
@@ -561,13 +559,11 @@ def main():
                         walls.push(mesh);
                     };
 
-                    // 외곽 벽 (네온 시안)
                     createWall(100, 10, 2, 0, 5, -50, 0x112233);
                     createWall(100, 10, 2, 0, 5, 50, 0x112233);
                     createWall(2, 10, 100, -50, 5, 0, 0x112233);
                     createWall(2, 10, 100, 50, 5, 0, 0x112233);
 
-                    // 내부 장애물 (화려한 보라/주황 네온)
                     createWall(20, 6, 4, -15, 3, -10, 0x440066);
                     createWall(4, 6, 20, 15, 3, 10, 0x663300);
                     createWall(12, 6, 12, 0, 3, 0, 0x004466);
@@ -635,7 +631,7 @@ def main():
                         case 'ShiftLeft': isWalking = true; break;
                         case 'KeyR': reload(); break;
                         case 'Space': 
-                        case 'KeyJ': shoot(); break;
+                        case 'KeyE': shoot(); break;
                         case 'Digit1': switchWeapon(1); break;
                         case 'Digit2': switchWeapon(2); break;
                         case 'Digit3': if (WEAPONS[3].owned) switchWeapon(3); break;
@@ -674,12 +670,10 @@ def main():
                 }
 
                 function triggerMuzzleEffect() {
-                    // HUD 이펙트
                     const flash = document.getElementById('muzzle-flash-hud');
                     flash.style.display = 'block';
                     setTimeout(() => { flash.style.display = 'none'; }, 40);
 
-                    // 3D 조명 이펙트
                     if (gunMesh) {
                         const gunWorldPos = new THREE.Vector3();
                         gunMesh.getWorldPosition(gunWorldPos);
