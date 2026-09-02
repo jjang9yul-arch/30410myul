@@ -32,11 +32,10 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **패치 내역:**
-        - **신규 신화 무기 '오딘(Odin)' 추가**: 초고속 연사 및 거대한 양손 중기관총 (1,500G)
-        - **일자 화염 지대**: 드래곤 브레스 발사 궤적 전체에 화염 장판 생성
-        - **파동 범위 최적화**: 보스 충격파 이펙트와 실제 피해 범위 일치
-        - **방향키 화면 회전**: 마우스 및 방향키(← → ↑ ↓)로 360도 회전
+        **15라운드 신규 패치 내역:**
+        - **최종 보스 '어둠의 검사' 추가 (15 Round)**: Dual Swords / 어둠의 잔상 돌진 / X자 검기 / 검 던지기 순간이동
+        - **어둠의 잔상 궤적**: 돌진 경로에 3초간 남아 피해를 주는 어둠의 잔상 장판 생성
+        - **최대 라운드 15R 확장**: 신화급 무기들과 함께 최종 보스에 도전하세요.
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -103,7 +102,7 @@ def main():
                 #boss-hp-fill {
                     width: 100%;
                     height: 100%;
-                    background: linear-gradient(90deg, #00f0ff, #ff0055);
+                    background: linear-gradient(90deg, #9900ff, #ff0055);
                     transition: width 0.1s linear;
                 }
                 #crosshair {
@@ -241,7 +240,7 @@ def main():
         <body>
             <div id="game-container">
                 <div id="hud">
-                    라운드: <span id="round">1</span> / 10 | 
+                    라운드: <span id="round">1</span> / 15 | 
                     체력: <span id="health" style="color: #00ffcc;">150</span> | 
                     골드: <span id="money" style="color:#ffd700;">0</span>G | 
                     무기: <span id="weapon">권총</span> | 
@@ -364,6 +363,12 @@ def main():
                         osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.25);
                         gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    } else if (type === 'dark_teleport') {
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                        gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                     } else if (type === 'charge') {
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(100, audioCtx.currentTime);
@@ -422,7 +427,7 @@ def main():
 
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], shockwaves = [], swordWaves = [], breathParticles = [], fireGrounds = [], explosionEffects = [], visualEffects = [];
+                let enemies = [], shockwaves = [], swordWaves = [], xSwordWaves = [], darkTrails = [], thrownSwords = [], breathParticles = [], fireGrounds = [], explosionEffects = [], visualEffects = [];
                 let isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
                 let roundRewardGiven = false;
@@ -516,13 +521,12 @@ def main():
                     else if (currentWeaponId === 4) { bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.85); gunLength = 0.85; }
                     else if (currentWeaponId === 5) { bodyGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 12); gunLength = 0.9; }
                     else if (currentWeaponId === 6) { bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); gunLength = 0.75; }
-                    else if (currentWeaponId === 7) { bodyGeo = new THREE.BoxGeometry(0.32, 0.35, 1.25); gunLength = 1.25; } // 오딘: 압도적인 양손 중기관총 체적
+                    else if (currentWeaponId === 7) { bodyGeo = new THREE.BoxGeometry(0.32, 0.35, 1.25); gunLength = 1.25; }
 
                     const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
                     if (currentWeaponId === 5) body.rotation.x = Math.PI / 2;
                     
-                    // 오딘은 화면 중앙에 두 손으로 들듯 배치
                     if (currentWeaponId === 7) {
                         body.position.set(0.0, -0.35, -0.6);
                     } else {
@@ -595,18 +599,15 @@ def main():
                     enemies = [];
                     bossEnemy = null;
                     
-                    shockwaves.forEach(s => scene.remove(s.mesh));
-                    shockwaves = [];
-                    swordWaves.forEach(sw => scene.remove(sw.mesh));
-                    swordWaves = [];
-                    breathParticles.forEach(b => scene.remove(b.mesh));
-                    breathParticles = [];
-                    fireGrounds.forEach(fg => scene.remove(fg.mesh));
-                    fireGrounds = [];
-                    explosionEffects.forEach(ex => scene.remove(ex.mesh));
-                    explosionEffects = [];
-                    visualEffects.forEach(ve => scene.remove(ve.mesh));
-                    visualEffects = [];
+                    shockwaves.forEach(s => scene.remove(s.mesh)); shockwaves = [];
+                    swordWaves.forEach(sw => scene.remove(sw.mesh)); swordWaves = [];
+                    xSwordWaves.forEach(xw => scene.remove(xw.group)); xSwordWaves = [];
+                    darkTrails.forEach(dt => scene.remove(dt.mesh)); darkTrails = [];
+                    thrownSwords.forEach(ts => scene.remove(ts.mesh)); thrownSwords = [];
+                    breathParticles.forEach(b => scene.remove(b.mesh)); breathParticles = [];
+                    fireGrounds.forEach(fg => scene.remove(fg.mesh)); fireGrounds = [];
+                    explosionEffects.forEach(ex => scene.remove(ex.mesh)); explosionEffects = [];
+                    visualEffects.forEach(ve => scene.remove(ve.mesh)); visualEffects = [];
 
                     playerHealth = 150;
                     roundRewardGiven = false;
@@ -622,6 +623,10 @@ def main():
                         createSwordBossEnemy(0, -20);
                         document.getElementById('boss-hud').style.display = 'block';
                         document.getElementById('boss-title').innerText = "소드마스터";
+                    } else if (round === 15) {
+                        createDarkSwordsmanBoss(0, -20);
+                        document.getElementById('boss-hud').style.display = 'block';
+                        document.getElementById('boss-title').innerText = "어둠의 검사 (최종 보스)";
                     } else {
                         const enemyCount = round * 2 + 2;
                         for (let i = 0; i < enemyCount; i++) {
@@ -797,6 +802,75 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
+                // 15라운드 최종 보스: 어둠의 검사 (쌍검)
+                function createDarkSwordsmanBoss(x, z) {
+                    const group = new THREE.Group();
+                    const darkMat = new THREE.MeshStandardMaterial({ color: 0x050505, metalness: 0.95, roughness: 0.1 });
+                    const purpleEye = new THREE.MeshBasicMaterial({ color: 0xaa00ff });
+                    const darkSwordMat = new THREE.MeshStandardMaterial({ color: 0x9900ff, emissive: 0x9900ff, emissiveIntensity: 1.0 });
+
+                    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 1.2), darkMat);
+                    torso.position.y = 2.8;
+                    group.add(torso);
+
+                    const head = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), darkMat);
+                    head.position.y = 4.5;
+                    const visior = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.15, 0.2), purpleEye);
+                    visior.position.set(0, 0.1, -0.55);
+                    head.add(visior);
+                    group.add(head);
+
+                    // 쌍검 착용 (좌, 우)
+                    function makeDarkSword() {
+                        const sg = new THREE.Group();
+                        const b = new THREE.Mesh(new THREE.BoxGeometry(0.25, 5.5, 0.5), darkSwordMat);
+                        b.position.y = 2.75;
+                        sg.add(b);
+                        const h = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.35), darkMat);
+                        sg.add(h);
+                        return sg;
+                    }
+
+                    const leftSword = makeDarkSword();
+                    leftSword.position.set(-1.5, 2.8, -0.3);
+                    leftSword.rotation.x = Math.PI / 3;
+                    leftSword.rotation.z = Math.PI / 8;
+                    group.add(leftSword);
+
+                    const rightSword = makeDarkSword();
+                    rightSword.position.set(1.5, 2.8, -0.3);
+                    rightSword.rotation.x = Math.PI / 3;
+                    rightSword.rotation.z = -Math.PI / 8;
+                    group.add(rightSword);
+
+                    const auraGeo = new THREE.SphereGeometry(3.0, 16, 16);
+                    const auraMat = new THREE.MeshBasicMaterial({ color: 0x8800ff, transparent: true, opacity: 0 });
+                    const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+                    auraMesh.position.y = 2.8;
+                    group.add(auraMesh);
+
+                    group.position.set(x, 0, z);
+                    scene.add(group);
+
+                    const maxHp = 4200;
+                    bossEnemy = {
+                        mesh: group,
+                        auraMesh: auraMesh,
+                        hp: maxHp,
+                        maxHp: maxHp,
+                        speed: 6.5,
+                        isBoss: true,
+                        bossType: 'dark_swordsman',
+                        state: 'walk',
+                        chargeTimer: 0,
+                        dashDir: new THREE.Vector3(),
+                        dashStartPos: new THREE.Vector3(),
+                        lastSkillTime: performance.now(),
+                        skillCooldown: 2600
+                    };
+                    enemies.push(bossEnemy);
+                }
+
                 function spawnSwordWave(bossPos, targetPos) {
                     playSound('sword_wave');
                     const waveGeo = new THREE.TorusGeometry(2.2, 0.2, 8, 24, Math.PI);
@@ -814,8 +888,60 @@ def main():
                     swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 30 });
                 }
 
+                function spawnXSwordWave(bossPos, targetPos) {
+                    playSound('sword_wave');
+                    const group = new THREE.Group();
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xcc00ff, side: THREE.DoubleSide });
+
+                    const w1 = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.25, 8, 24, Math.PI), mat);
+                    w1.rotation.z = Math.PI / 4;
+                    const w2 = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.25, 8, 24, Math.PI), mat);
+                    w2.rotation.z = -Math.PI / 4;
+
+                    group.add(w1);
+                    group.add(w2);
+
+                    const startPos = bossPos.clone().add(new THREE.Vector3(0, 2.8, 0));
+                    group.position.copy(startPos);
+                    group.lookAt(targetPos);
+
+                    const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
+                    scene.add(group);
+
+                    xSwordWaves.push({ group: group, dir: dir, speed: 32.0, life: 3.0, damage: 45 });
+                }
+
+                function throwDarkSword(bossPos, targetPos) {
+                    playSound('sword_wave');
+                    const mat = new THREE.MeshStandardMaterial({ color: 0xaa00ff, emissive: 0xaa00ff, emissiveIntensity: 1.0 });
+                    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 6.0, 0.8), mat);
+                    
+                    const startPos = bossPos.clone().add(new THREE.Vector3(0, 2.8, 0));
+                    mesh.position.copy(startPos);
+                    mesh.lookAt(targetPos);
+                    mesh.rotation.x += Math.PI / 2;
+
+                    const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
+                    scene.add(mesh);
+
+                    thrownSwords.push({ mesh: mesh, dir: dir, targetPos: targetPos.clone(), speed: 38.0, life: 2.0 });
+                }
+
+                function createDarkTrail(startPos, endPos) {
+                    const dist = startPos.distanceTo(endPos);
+                    const geo = new THREE.BoxGeometry(2.2, 0.1, dist);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x8800ff, transparent: true, opacity: 0.8 });
+                    const mesh = new THREE.Mesh(geo, mat);
+
+                    const mid = startPos.clone().add(endPos).multiplyScalar(0.5);
+                    mesh.position.set(mid.x, 0.1, mid.z);
+                    mesh.lookAt(endPos);
+                    scene.add(mesh);
+
+                    darkTrails.push({ mesh: mesh, life: 3.0, damage: 35 });
+                }
+
                 function createShockwave(pos, maxRadius, damage) {
-                    // 링 두께 및 영역의 명확한 시각화를 위해 RingGeometry 구성
                     const ringWidth = 1.2;
                     const geo = new THREE.RingGeometry(0.1, ringWidth, 32);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
@@ -924,7 +1050,7 @@ def main():
 
                 function skipRoundWithCheat() {
                     money += 100;
-                    if (round < 10) {
+                    if (round < 15) {
                         round++;
                         startRound();
                     } else {
@@ -1034,7 +1160,7 @@ def main():
                                 scene.remove(enemyObj.mesh);
                                 enemies = enemies.filter(e => e !== enemyObj);
                                 kills++;
-                                money += enemyObj.isBoss ? 800 : 30;
+                                money += enemyObj.isBoss ? 1200 : 30;
                                 if (enemyObj.isBoss) bossEnemy = null;
                                 updateHUD();
                                 if (enemies.length === 0) endGame(true);
@@ -1071,10 +1197,10 @@ def main():
 
                     if (victory) {
                         if (!roundRewardGiven) { money += 100; roundRewardGiven = true; updateHUD(); }
-                        title.innerText = `라운드 ${round} 승리!`;
+                        title.innerText = round === 15 ? "🏆 최종 클리어! 🏆" : `라운드 ${round} 승리!`;
                         title.style.color = '#00ffcc';
-                        desc.innerText = '모든 적을 처치했습니다!';
-                        btn.innerText = round === 10 ? '메인 화면으로' : '다음 라운드 진입';
+                        desc.innerText = round === 15 ? '어둠의 검사를 물리치고 완벽한 승리를 거두었습니다!' : '모든 적을 처치했습니다!';
+                        btn.innerText = round === 15 ? '메인 화면으로' : '다음 라운드 진입';
                     } else {
                         title.innerText = '패배했습니다...';
                         title.style.color = '#ff3333';
@@ -1085,7 +1211,7 @@ def main():
 
                 function resetOrNextRound() {
                     gameOverScreen.style.display = 'none';
-                    if (isRoundCleared && round < 10) round++;
+                    if (isRoundCleared && round < 15) round++;
                     else { round = 1; kills = 0; money = 0; }
                     startRound();
                     isGameActive = true;
@@ -1163,6 +1289,66 @@ def main():
                             if (sw.life <= 0) {
                                 scene.remove(sw.mesh);
                                 swordWaves.splice(i, 1);
+                            }
+                        }
+
+                        // X자 검기
+                        for (let i = xSwordWaves.length - 1; i >= 0; i--) {
+                            const xw = xSwordWaves[i];
+                            xw.group.position.add(xw.dir.clone().multiplyScalar(xw.speed * delta));
+                            xw.life -= delta;
+
+                            if (xw.group.position.distanceTo(playerPos) < 2.5) {
+                                playerHealth -= xw.damage;
+                                updateHUD();
+                                scene.remove(xw.group);
+                                xSwordWaves.splice(i, 1);
+                                if (playerHealth <= 0) endGame(false);
+                                continue;
+                            }
+
+                            if (xw.life <= 0) {
+                                scene.remove(xw.group);
+                                xSwordWaves.splice(i, 1);
+                            }
+                        }
+
+                        // 던진 검 및 순간이동
+                        for (let i = thrownSwords.length - 1; i >= 0; i--) {
+                            const ts = thrownSwords[i];
+                            ts.mesh.position.add(ts.dir.clone().multiplyScalar(ts.speed * delta));
+                            ts.life -= delta;
+
+                            if (ts.mesh.position.distanceTo(ts.targetPos) < 1.5 || ts.life <= 0) {
+                                if (bossEnemy && bossEnemy.bossType === 'dark_swordsman') {
+                                    playSound('dark_teleport');
+                                    bossEnemy.mesh.position.copy(ts.mesh.position);
+                                    bossEnemy.mesh.position.y = 0;
+                                    createShockwave(bossEnemy.mesh.position.clone(), 12.0, 30);
+                                }
+                                scene.remove(ts.mesh);
+                                thrownSwords.splice(i, 1);
+                            }
+                        }
+
+                        // 어둠의 잔상 궤적 장판 (3초 지속)
+                        for (let i = darkTrails.length - 1; i >= 0; i--) {
+                            const dt = darkTrails[i];
+                            dt.life -= delta;
+                            dt.mesh.material.opacity = Math.min(0.8, dt.life * 0.3);
+
+                            const dist2D = new THREE.Vector2(dt.mesh.position.x, dt.mesh.position.z)
+                                .distanceTo(new THREE.Vector2(playerPos.x, playerPos.z));
+
+                            if (dist2D < 1.8 && playerPos.y <= PLAYER_HEIGHT + 0.5) {
+                                playerHealth -= dt.damage * delta;
+                                updateHUD();
+                                if (playerHealth <= 0) endGame(false);
+                            }
+
+                            if (dt.life <= 0) {
+                                scene.remove(dt.mesh);
+                                darkTrails.splice(i, 1);
                             }
                         }
 
@@ -1275,6 +1461,58 @@ def main():
                                             }
                                         }
                                     }
+                                } else if (enemy.bossType === 'dark_swordsman') {
+                                    enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+
+                                    if (enemy.state === 'walk') {
+                                        const dist = enemyPos.distanceTo(playerPos);
+                                        if (dist > 3.0) {
+                                            const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
+                                            enemyPos.x += dir.x * enemy.speed * delta;
+                                            enemyPos.z += dir.z * enemy.speed * delta;
+                                        }
+
+                                        if (time - enemy.lastSkillTime > enemy.skillCooldown) {
+                                            enemy.lastSkillTime = time;
+                                            const rand = Math.random();
+                                            if (rand < 0.4) {
+                                                enemy.state = 'charging';
+                                                enemy.chargeTimer = 0;
+                                                playSound('charge');
+                                            } else if (rand < 0.7) {
+                                                spawnXSwordWave(enemyPos, playerPos);
+                                            } else {
+                                                throwDarkSword(enemyPos, playerPos);
+                                            }
+                                        }
+                                    } else if (enemy.state === 'charging') {
+                                        enemy.chargeTimer += delta;
+                                        enemy.auraMesh.material.opacity = Math.min(0.9, enemy.chargeTimer * 0.9);
+
+                                        if (enemy.chargeTimer >= 0.8) {
+                                            enemy.state = 'dashing';
+                                            enemy.auraMesh.material.opacity = 0;
+                                            enemy.dashDir.subVectors(playerPos, enemyPos).normalize();
+                                            enemy.dashStartPos.copy(enemyPos);
+                                            enemy.chargeTimer = 0;
+                                            playSound('dash');
+                                        }
+                                    } else if (enemy.state === 'dashing') {
+                                        enemyPos.x += enemy.dashDir.x * 45.0 * delta;
+                                        enemyPos.z += enemy.dashDir.z * 45.0 * delta;
+                                        enemy.chargeTimer += delta;
+
+                                        if (enemyPos.distanceTo(playerPos) < 2.5) {
+                                            playerHealth -= 50;
+                                            updateHUD();
+                                            createDarkTrail(enemy.dashStartPos, enemyPos.clone());
+                                            enemy.state = 'walk';
+                                            if (playerHealth <= 0) endGame(false);
+                                        } else if (enemy.chargeTimer > 0.5) {
+                                            createDarkTrail(enemy.dashStartPos, enemyPos.clone());
+                                            enemy.state = 'walk';
+                                        }
+                                    }
                                 }
                             } else {
                                 const dist = enemyPos.distanceTo(playerPos);
@@ -1292,12 +1530,10 @@ def main():
                             }
                         });
 
-                        // 링 확장형 충격파 처리 (파동 시각 범위 및 히트 판정 일치)
                         for (let i = shockwaves.length - 1; i >= 0; i--) {
                             const sw = shockwaves[i];
                             sw.currentRadius += sw.expandSpeed * delta;
                             
-                            // RingGeometry 재생성으로 시각적 링 확대
                             sw.mesh.geometry.dispose();
                             sw.mesh.geometry = new THREE.RingGeometry(sw.currentRadius, sw.currentRadius + sw.ringWidth, 32);
                             sw.mesh.material.opacity -= delta * 0.45;
@@ -1305,7 +1541,6 @@ def main():
                             const dist2D = new THREE.Vector2(sw.mesh.position.x, sw.mesh.position.z)
                                 .distanceTo(new THREE.Vector2(playerPos.x, playerPos.z));
 
-                            // 링의 시각적 범위에 플레이어가 닿아 있고 착지해 있을 때 피해 적용
                             if (dist2D >= sw.currentRadius && dist2D <= sw.currentRadius + sw.ringWidth + 0.5 && isGrounded) {
                                 playerHealth -= sw.damage * delta * 3;
                                 updateHUD();
@@ -1318,13 +1553,11 @@ def main():
                             }
                         }
 
-                        // 브레스 파티클 및 궤적 전체 화염 지대 생성
                         for (let i = breathParticles.length - 1; i >= 0; i--) {
                             const bp = breathParticles[i];
                             bp.mesh.position.add(bp.velocity.clone().multiplyScalar(delta));
                             bp.life -= delta;
 
-                            // 브레스가 지나가는 모든 위치 지면에 화염 지대 지속 생성
                             if (Math.random() < 0.4) {
                                 spawnFireGround(bp.mesh.position);
                             }
