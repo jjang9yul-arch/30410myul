@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
+# 페이지 기본 설정
 st.set_page_config(
     page_title="Vanguard Tactical 3D",
     page_icon="🎯",
@@ -8,6 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 커스텀 CSS
 st.markdown("""
 <style>
     .block-container {
@@ -33,10 +35,11 @@ def main():
         st.write("발로란트 스타일의 1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **조작 방법:**
-        - **화면 클릭**: 조준경 잠금 (마우스 조준 활성화)
+        - **마우스 이동/드래그**: 화면 조준 및 시점 전환
         - **WASD**: 이동 | **Shift**: 천천히 걷기
-        - **마우스 왼쪽 클릭**: 사격 | **R**: 재장전
-        - **1, 2, 3**: 무기 교체 | **Esc**: 마우스 커서 해제
+        - **마우스 클릭 / Space**: 사격
+        - **R**: 재장전
+        - **1, 2, 3**: 무기 교체 (1: 권총, 2: 소총, 3: 산탄총)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -56,7 +59,7 @@ def main():
                 body {
                     margin: 0;
                     overflow: hidden;
-                    font-family: sans-serif;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     user-select: none;
                     background-color: #111;
                 }
@@ -64,6 +67,7 @@ def main():
                     width: 100vw;
                     height: 80vh;
                     position: relative;
+                    cursor: crosshair;
                 }
                 #hud {
                     position: absolute;
@@ -93,20 +97,32 @@ def main():
                 }
                 #crosshair::before { top: 4px; left: -5px; width: 20px; height: 2px; }
                 #crosshair::after { top: -5px; left: 4px; width: 2px; height: 20px; }
-                #instructions {
+                #start-overlay {
                     position: absolute;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
                     color: white;
                     text-align: center;
-                    font-size: 24px;
-                    background: rgba(0, 0, 0, 0.8);
-                    padding: 30px;
-                    border-radius: 8px;
-                    cursor: pointer;
+                    background: rgba(0, 0, 0, 0.85);
+                    padding: 25px 40px;
+                    border-radius: 12px;
                     z-index: 20;
                     border: 2px solid #00ffcc;
+                }
+                #start-btn {
+                    margin-top: 15px;
+                    padding: 12px 30px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #111;
+                    background-color: #00ffcc;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                }
+                #start-btn:hover {
+                    background-color: #00cca3;
                 }
                 #game-over {
                     display: none;
@@ -117,7 +133,7 @@ def main():
                     color: #ff3333;
                     font-size: 36px;
                     text-align: center;
-                    background: rgba(0, 0, 0, 0.85);
+                    background: rgba(0, 0, 0, 0.9);
                     padding: 30px;
                     border-radius: 10px;
                     z-index: 30;
@@ -136,7 +152,13 @@ def main():
                     남은 적: <span id="enemies-left">0</span>
                 </div>
                 <div id="crosshair"></div>
-                <div id="instructions">🖱️ 화면 중앙(이 창)을 클릭하세요<br><span style="font-size: 16px; color: #aaa;">(마우스 조준 활성화)</span></div>
+                
+                <div id="start-overlay">
+                    <h2>🎯 게임 준비 완료</h2>
+                    <p style="color: #ccc; margin-bottom: 5px;">버튼을 누르면 바로 게임이 시작됩니다.</p>
+                    <button id="start-btn" onclick="startGame()">전투 시작</button>
+                </div>
+
                 <div id="game-over">
                     <h1 id="game-over-title">라운드 종료</h1>
                     <button onclick="nextRound()" style="font-size: 20px; padding: 10px 20px; cursor: pointer;">다음 라운드</button>
@@ -160,7 +182,11 @@ def main():
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
                 let enemies = [], walls = [], isGameActive = false;
 
-                const instructions = document.getElementById('instructions');
+                let isMouseDown = false;
+                let previousMousePosition = { x: 0, y: 0 };
+                let pitch = 0, yaw = 0;
+
+                const startOverlay = document.getElementById('start-overlay');
                 const gameOverScreen = document.getElementById('game-over');
 
                 function init() {
@@ -180,37 +206,49 @@ def main():
 
                     renderer = new THREE.WebGLRenderer({ antialias: true });
                     renderer.setSize(window.innerWidth, window.innerHeight * 0.8);
-                    document.getElementById('game-container').appendChild(renderer.domElement);
+                    const container = document.getElementById('game-container');
+                    container.appendChild(renderer.domElement);
 
-                    // 클릭 바인딩 강화
-                    const requestLock = () => {
-                        window.focus();
-                        document.body.requestPointerLock();
-                    };
-
-                    instructions.addEventListener('click', requestLock);
-                    renderer.domElement.addEventListener('click', requestLock);
-
-                    document.addEventListener('pointerlockchange', function () {
-                        if (document.pointerLockElement === document.body) {
-                            instructions.style.display = 'none';
-                            isGameActive = true;
-                        } else {
-                            if (playerHealth > 0) {
-                                instructions.style.display = 'block';
-                            }
-                            isGameActive = false;
-                        }
+                    // 마우스 시점 조종 (드래그/이동 감지)
+                    container.addEventListener('mousedown', (e) => {
+                        isMouseDown = true;
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                        if (isGameActive && e.button === 0 && !isReloading) shoot();
                     });
 
-                    document.addEventListener('mousemove', onMouseMove);
+                    container.addEventListener('mousemove', (e) => {
+                        if (!isGameActive) return;
+
+                        const deltaX = e.clientX - previousMousePosition.x;
+                        const deltaY = e.clientY - previousMousePosition.y;
+
+                        // 드래그 중이거나 영역 내부 이동 시 시점 회전
+                        if (isMouseDown || true) {
+                            yaw -= deltaX * 0.003;
+                            pitch -= deltaY * 0.003;
+                            pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+
+                            camera.rotation.order = "YXZ";
+                            camera.rotation.y = yaw;
+                            camera.rotation.x = pitch;
+                        }
+
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                    });
+
+                    window.addEventListener('mouseup', () => { isMouseDown = false; });
+
                     document.addEventListener('keydown', onKeyDown);
                     document.addEventListener('keyup', onKeyUp);
-                    document.addEventListener('mousedown', onMouseDown);
 
                     buildMap();
                     startRound();
                     animate();
+                }
+
+                function startGame() {
+                    startOverlay.style.display = 'none';
+                    isGameActive = true;
                 }
 
                 function buildMap() {
@@ -279,6 +317,7 @@ def main():
                 }
 
                 function onKeyDown(e) {
+                    if (!isGameActive) return;
                     switch (e.code) {
                         case 'KeyW': moveForward = true; break;
                         case 'KeyS': moveBackward = true; break;
@@ -286,6 +325,7 @@ def main():
                         case 'KeyD': moveRight = true; break;
                         case 'ShiftLeft': isWalking = true; break;
                         case 'KeyR': reload(); break;
+                        case 'Space': shoot(); break;
                         case 'Digit1': switchWeapon(1); break;
                         case 'Digit2': switchWeapon(2); break;
                         case 'Digit3': switchWeapon(3); break;
@@ -300,18 +340,6 @@ def main():
                         case 'KeyD': moveRight = false; break;
                         case 'ShiftLeft': isWalking = false; break;
                     }
-                }
-
-                let pitch = 0, yaw = 0;
-                function onMouseMove(e) {
-                    if (document.pointerLockElement !== document.body) return;
-                    yaw -= (e.movementX || 0) * 0.002;
-                    pitch -= (e.movementY || 0) * 0.002;
-                    pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
-
-                    camera.rotation.order = "YXZ";
-                    camera.rotation.y = yaw;
-                    camera.rotation.x = pitch;
                 }
 
                 function switchWeapon(id) {
@@ -331,10 +359,6 @@ def main():
                         isReloading = false;
                         updateHUD();
                     }, w.reloadTime);
-                }
-
-                function onMouseDown(e) {
-                    if (e.button === 0 && isGameActive && !isReloading) shoot();
                 }
 
                 function shoot() {
@@ -387,7 +411,6 @@ def main():
 
                 function endRound(victory) {
                     isGameActive = false;
-                    document.exitPointerLock();
                     gameOverScreen.style.display = 'block';
                     const title = document.getElementById('game-over-title');
                     if (victory) {
@@ -403,6 +426,7 @@ def main():
                     gameOverScreen.style.display = 'none';
                     if (playerHealth <= 0) { round = 1; kills = 0; } else { round++; }
                     startRound();
+                    isGameActive = true;
                 }
 
                 function animate() {
@@ -456,7 +480,7 @@ def main():
         </html>
         """
         
-        components.html(game_html, height=800)
+        components.html(game_html, height=750)
 
 if __name__ == "__main__":
     main()
