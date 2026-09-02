@@ -32,10 +32,11 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **업데이트 내용:**
-        - **총 반동 완전 제거**: 모든 무기의 반동(recoil) 값 0 적용
-        - **5라운드 크로노스 드래곤**: 체력 1200으로 조정, 직접 점프 후 착지 충격파 생성, 화염 브레스 발사
-        - **10라운드 소드마스터**: 15초마다 공중 높이 도약 후 플레이어 위치로 급강하 박치기 및 폭발 이펙트
+        **주요 기능 및 치트:**
+        - **M 키 치트**: 누를 때마다 라운드 즉시 스킵 & +100 Gold 지급
+        - **무기별 고유 색상 및 발사 이펙트**: 각 무기 디자인, 총구 화염, 궤적, 레이저/폭발 이펙트 적용
+        - **총 반동 제거**: 모든 무기 반동 0
+        - **보스 시스템**: 5라운드 드래곤(HP 1200, 점프 충격파/브레스) 및 10라운드 소드마스터(HP 2500, 15초 강하 폭발)
         """)
         
         if st.button("게임 시작", type="primary", use_container_width=True):
@@ -338,6 +339,18 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
                         gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    } else if (type === 'laser') {
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    } else if (type === 'bazooka') {
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.4);
+                        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
                     } else if (type === 'slam' || type === 'explosion') {
                         osc.type = 'square';
                         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
@@ -357,14 +370,14 @@ def main():
                     osc.stop(audioCtx.currentTime + 0.6);
                 }
 
-                // 총 반동(recoil) 모두 0으로 세팅
+                // 무기 설정 (색상 및 개별 특성 포함)
                 const WEAPONS = {
-                    1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0, owned: true },
-                    2: { name: '소총', damage: 55, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0, owned: true },
-                    3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0, pellets: 8, owned: false, price: 150 },
-                    4: { name: '기관총', damage: 8, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0, owned: false, price: 300 },
-                    5: { name: '바주카포', damage: 180, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0, owned: false, price: 600 },
-                    6: { name: '레이저총', damage: 50, range: 120, fireRate: 150, magSize: 15, reloadTime: 1800, recoil: 0, owned: false, price: 1200 }
+                    1: { name: '권총', damage: 25, range: 40, fireRate: 280, magSize: 12, reloadTime: 1200, recoil: 0, color: 0x00ffcc, owned: true },
+                    2: { name: '소총', damage: 55, range: 60, fireRate: 120, magSize: 30, reloadTime: 2000, recoil: 0, color: 0x3388ff, owned: true },
+                    3: { name: '산탄총', damage: 18, range: 18, fireRate: 750, magSize: 6, reloadTime: 2400, recoil: 0, pellets: 8, color: 0xff8800, owned: false, price: 150 },
+                    4: { name: '기관총', damage: 8, range: 70, fireRate: 80, magSize: 100, reloadTime: 3000, recoil: 0, color: 0xffd700, owned: false, price: 300 },
+                    5: { name: '바주카포', damage: 180, range: 100, fireRate: 1500, magSize: 1, reloadTime: 2500, recoil: 0, color: 0xff2200, owned: false, price: 600 },
+                    6: { name: '레이저총', damage: 50, range: 120, fireRate: 150, magSize: 15, reloadTime: 1800, recoil: 0, color: 0x00f0ff, owned: false, price: 1200 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
@@ -372,7 +385,7 @@ def main():
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
 
-                let scene, camera, renderer, gunMesh;
+                let scene, camera, renderer, gunMesh, muzzleFlashLight;
                 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
                 
                 let playerVelocityY = 0;
@@ -383,7 +396,8 @@ def main():
 
                 let prevTime = performance.now();
                 let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-                let enemies = [], shockwaves = [], breathParticles = [], explosionEffects = [], isGameActive = false, isShopOpen = false;
+                let enemies = [], shockwaves = [], breathParticles = [], explosionEffects = [], visualEffects = [];
+                let isGameActive = false, isShopOpen = false;
                 let isRoundCleared = false;
                 let roundRewardGiven = false;
                 let bossEnemy = null;
@@ -465,11 +479,26 @@ def main():
                     if (gunMesh) camera.remove(gunMesh);
 
                     const gunGroup = new THREE.Group();
-                    const bodyGeo = new THREE.BoxGeometry(0.12, 0.14, 0.6);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, metalness: 0.8 });
+                    const w = WEAPONS[currentWeaponId];
+                    
+                    let bodyGeo;
+                    if (currentWeaponId === 1) bodyGeo = new THREE.BoxGeometry(0.08, 0.12, 0.35); // 권총
+                    else if (currentWeaponId === 2) bodyGeo = new THREE.BoxGeometry(0.1, 0.14, 0.65); // 소총
+                    else if (currentWeaponId === 3) bodyGeo = new THREE.BoxGeometry(0.14, 0.16, 0.7); // 산탄총
+                    else if (currentWeaponId === 4) bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.85); // 기관총
+                    else if (currentWeaponId === 5) bodyGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12); // 바주카포
+                    else bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); // 레이저총
+
+                    const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
+                    if (currentWeaponId === 5) body.rotation.x = Math.PI / 2;
                     body.position.set(0.2, -0.2, -0.4);
                     gunGroup.add(body);
+
+                    // 총구 화염 플래시 조명
+                    muzzleFlashLight = new THREE.PointLight(w.color, 0, 5);
+                    muzzleFlashLight.position.set(0.2, -0.2, -0.8);
+                    gunGroup.add(muzzleFlashLight);
 
                     gunMesh = gunGroup;
                     camera.add(gunMesh);
@@ -531,6 +560,8 @@ def main():
                     breathParticles = [];
                     explosionEffects.forEach(ex => scene.remove(ex.mesh));
                     explosionEffects = [];
+                    visualEffects.forEach(ve => scene.remove(ve.mesh));
+                    visualEffects = [];
 
                     playerHealth = 150;
                     roundRewardGiven = false;
@@ -576,7 +607,6 @@ def main():
                     });
                 }
 
-                // 크로노스 드래곤 (체력 1200으로 설정)
                 function createBossEnemy(x, z) {
                     const group = new THREE.Group();
                     const skinMat = new THREE.MeshStandardMaterial({ color: 0x881122, metalness: 0.4, roughness: 0.3 });
@@ -699,9 +729,14 @@ def main():
                     explosionEffects.push({ mesh: mesh, scale: 1.0, opacity: 1.0 });
                 }
 
+                // M 키 치트 포함 키 입력 제어
                 function onKeyDown(e) {
                     initAudio();
                     if (!isGameActive) return;
+                    if (e.code === 'KeyM') {
+                        skipRoundWithCheat();
+                        return;
+                    }
                     if (e.code === 'KeyB') { toggleShop(); return; }
                     if (e.code === 'KeyO') { toggleFullScreen(); return; }
                     if (e.code === 'KeyH') { buyPotion(); return; }
@@ -726,6 +761,18 @@ def main():
                         case 'Digit5': if (WEAPONS[5].owned) switchWeapon(5); break;
                         case 'Digit6': if (WEAPONS[6].owned) switchWeapon(6); break;
                     }
+                }
+
+                // M 키 누를 때 라운드 통과 및 100골드 지급
+                function skipRoundWithCheat() {
+                    money += 100;
+                    if (round < 10) {
+                        round++;
+                        startRound();
+                    } else {
+                        endGame(true);
+                    }
+                    updateHUD();
                 }
 
                 function onKeyUp(e) {
@@ -758,6 +805,41 @@ def main():
                     }, w.reloadTime);
                 }
 
+                // 무기별 이펙트 생성 (총구 플래시, 궤적, 레이저, 바주카 폭발)
+                function triggerMuzzleEffect(targetPoint) {
+                    const w = WEAPONS[currentWeaponId];
+                    if (muzzleFlashLight) {
+                        muzzleFlashLight.intensity = 3.0;
+                        setTimeout(() => { if (muzzleFlashLight) muzzleFlashLight.intensity = 0; }, 50);
+                    }
+
+                    const startPos = new THREE.Vector3();
+                    camera.getWorldPosition(startPos);
+                    startPos.y -= 0.2;
+
+                    if (currentWeaponId === 6) { // 레이저 빔 이펙트
+                        playSound('laser');
+                        const geom = new THREE.CylinderGeometry(0.04, 0.04, startPos.distanceTo(targetPoint), 8);
+                        geom.rotateX(Math.PI / 2);
+                        const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.9 });
+                        const laserMesh = new THREE.Mesh(geom, mat);
+                        laserMesh.position.copy(startPos).add(targetPoint).multiplyScalar(0.5);
+                        laserMesh.lookAt(targetPoint);
+                        scene.add(laserMesh);
+                        visualEffects.push({ mesh: laserMesh, life: 0.15 });
+                    } else if (currentWeaponId === 5) { // 바주카포 폭발 및 궤적
+                        playSound('bazooka');
+                        createExplosionEffect(targetPoint);
+                    } else { // 기본 탄궤적
+                        const points = [startPos, targetPoint];
+                        const geom = new THREE.BufferGeometry().setFromPoints(points);
+                        const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
+                        const line = new THREE.Line(geom, mat);
+                        scene.add(line);
+                        visualEffects.push({ mesh: line, life: 0.08 });
+                    }
+                }
+
                 function shoot() {
                     const now = performance.now();
                     const w = WEAPONS[currentWeaponId];
@@ -767,7 +849,7 @@ def main():
                     lastShotTime = now;
                     currentAmmo--;
                     
-                    playSound('shot');
+                    if (currentWeaponId !== 6 && currentWeaponId !== 5) playSound('shot');
                     updateHUD();
 
                     const raycaster = new THREE.Raycaster();
@@ -776,7 +858,10 @@ def main():
                     const enemyMeshes = enemies.flatMap(e => e.mesh.children);
                     const intersects = raycaster.intersectObjects(enemyMeshes);
 
+                    let targetPoint = camera.position.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
+
                     if (intersects.length > 0 && intersects[0].distance <= w.range) {
+                        targetPoint = intersects[0].point;
                         const hitMesh = intersects[0].object;
                         const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh));
                         if (enemyObj) {
@@ -793,6 +878,8 @@ def main():
                             }
                         }
                     }
+
+                    triggerMuzzleEffect(targetPoint);
                 }
 
                 function updateHUD() {
@@ -874,6 +961,16 @@ def main():
                         camera.translateZ(velocity.z * delta);
 
                         const playerPos = camera.position;
+
+                        // 시각적 연출 및 이펙트 소멸 제어
+                        for (let i = visualEffects.length - 1; i >= 0; i--) {
+                            const ve = visualEffects[i];
+                            ve.life -= delta;
+                            if (ve.life <= 0) {
+                                scene.remove(ve.mesh);
+                                visualEffects.splice(i, 1);
+                            }
+                        }
 
                         enemies.forEach(enemy => {
                             const enemyPos = enemy.mesh.position;
