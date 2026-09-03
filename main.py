@@ -32,7 +32,8 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **15라운드 신규 패치 내역:**
+        **15라운드 & 신규 무기 패치 내역:**
+        - **신규 무기 '불칸(Vulcan)' 추가**: 오딘 대비 1.4배 데미지, 강력한 3점사 사격 방식, 30발 탄창[cite: 1]
         - **최종 보스 '어둠의 검사' 추가 (15 Round)**: Dual Swords / 어둠의 잔상 돌진 / X자 검기 / 검 던지기 순간이동
         - **어둠의 검사 밸런스 조정**: 이동 속도 하향 조절 및 눈 레이저 발사 패턴 추가
         - **어둠의 잔상 궤적**: 돌진 경로에 3초간 남아 피해를 주는 어둠의 잔상 장판 생성
@@ -309,6 +310,13 @@ def main():
                         <button id="buy-odin-btn" class="buy-btn" onclick="buyWeapon(7)">오딘 구매 (1500G)</button>
                     </div>
 
+                    <div class="buy-item">
+                        <h4 style="margin: 0; color: #ff4500;">🔥 불칸 (Vulcan - 3점사 돌격소총) - [8]</h4>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">오딘 대비 1.4배 데미지, 강력한 3점사 | 탄창: 30발</p>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,800G</p>
+                        <button id="buy-vulcan-btn" class="buy-btn" onclick="buyWeapon(8)">불칸 구매 (1800G)</button>
+                    </div>
+
                     <button onclick="toggleShop()" style="margin-top: 10px; padding: 6px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
                 </div>
                 
@@ -352,6 +360,12 @@ def main():
                         osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.06);
                         gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
+                    } else if (type === 'vulcan_shot') {
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(550, audioCtx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.12);
+                        gain.gain.setValueAtTime(0.55, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
                     } else if (type === 'laser') {
                         osc.type = 'sine';
                         osc.frequency.setValueAtTime(900, audioCtx.currentTime);
@@ -408,7 +422,8 @@ def main():
                     4: { name: '기관총', damage: 12, range: 75, fireRate: 75, magSize: 100, reloadTime: 2800, color: 0xffd700, owned: false, price: 300 },
                     5: { name: '바주카포', damage: 220, range: 110, fireRate: 1400, magSize: 1, reloadTime: 2200, color: 0xff2200, owned: false, price: 600 },
                     6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 },
-                    7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1500 }
+                    7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1500 },
+                    8: { name: '불칸', damage: 25, range: 95, fireRate: 120, magSize: 30, reloadTime: 1900, color: 0xff4500, owned: false, price: 1800 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
@@ -523,6 +538,7 @@ def main():
                     else if (currentWeaponId === 5) { bodyGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 12); gunLength = 0.9; }
                     else if (currentWeaponId === 6) { bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); gunLength = 0.75; }
                     else if (currentWeaponId === 7) { bodyGeo = new THREE.BoxGeometry(0.32, 0.35, 1.25); gunLength = 1.25; }
+                    else if (currentWeaponId === 8) { bodyGeo = new THREE.BoxGeometry(0.15, 0.18, 0.8); gunLength = 0.8; }
 
                     const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -803,7 +819,6 @@ def main():
                     enemies.push(bossEnemy);
                 }
 
-                // 15라운드 최종 보스: 어둠의 검사 (이속 하향 및 레이저 패턴 필드 추가)
                 function createDarkSwordsmanBoss(x, z) {
                     const group = new THREE.Group();
                     const darkMat = new THREE.MeshStandardMaterial({ color: 0x050505, metalness: 0.95, roughness: 0.1 });
@@ -858,7 +873,7 @@ def main():
                         auraMesh: auraMesh,
                         hp: maxHp,
                         maxHp: maxHp,
-                        speed: 3.5, // 이동 속도 감소 (6.5 -> 3.5)
+                        speed: 3.5,
                         isBoss: true,
                         bossType: 'dark_swordsman',
                         state: 'walk',
@@ -868,7 +883,7 @@ def main():
                         lastSkillTime: performance.now(),
                         skillCooldown: 2600,
                         lastLaserTime: performance.now(),
-                        laserCooldown: 5000 // 5초 주기 레이저 발사
+                        laserCooldown: 5000
                     };
                     enemies.push(bossEnemy);
                 }
@@ -1052,6 +1067,7 @@ def main():
                     if (e.code === 'KeyH') { buyPotion(); return; }
                     if (e.code === 'KeyL') { buyWeapon(6); return; }
                     if (e.code === 'Digit7') { if (WEAPONS[7].owned) switchWeapon(7); else buyWeapon(7); return; }
+                    if (e.code === 'Digit8') { if (WEAPONS[8].owned) switchWeapon(8); else buyWeapon(8); return; }
                     if (isShopOpen) return;
 
                     switch (e.code) {
@@ -1123,6 +1139,55 @@ def main():
                     }, w.reloadTime);
                 }
 
+                function executeSingleShot(w, soundType) {
+                    const raycaster = new THREE.Raycaster();
+                    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                    
+                    const enemyMeshes = enemies.flatMap(e => e.mesh.children);
+                    const intersects = raycaster.intersectObjects(enemyMeshes);
+
+                    let targetPoint = camera.position.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
+
+                    if (intersects.length > 0 && intersects[0].distance <= w.range) {
+                        targetPoint = intersects[0].point;
+                        const hitMesh = intersects[0].object;
+                        const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh) || e.mesh.children.some(c => c.children && c.children.includes(hitMesh)));
+                        if (enemyObj) {
+                            enemyObj.hp -= w.damage;
+                            updateHUD();
+                            if (enemyObj.hp <= 0) {
+                                scene.remove(enemyObj.mesh);
+                                enemies = enemies.filter(e => e !== enemyObj);
+                                kills++;
+                                money += enemyObj.isBoss ? 1200 : 30;
+                                if (enemyObj.isBoss) bossEnemy = null;
+                                updateHUD();
+                                if (enemies.length === 0) endGame(true);
+                            }
+                        }
+                    }
+                    triggerMuzzleEffectCustom(targetPoint, soundType, w);
+                }
+
+                function triggerMuzzleEffectCustom(targetPoint, soundType, w) {
+                    if (muzzleFlashLight) {
+                        muzzleFlashLight.intensity = 4.0;
+                        setTimeout(() => { if (muzzleFlashLight) muzzleFlashLight.intensity = 0; }, 50);
+                    }
+
+                    const startPos = new THREE.Vector3();
+                    muzzlePoint.getWorldPosition(startPos);
+
+                    playSound(soundType);
+
+                    const points = [startPos, targetPoint];
+                    const geom = new THREE.BufferGeometry().setFromPoints(points);
+                    const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
+                    const line = new THREE.Line(geom, mat);
+                    scene.add(line);
+                    visualEffects.push({ mesh: line, life: 0.08 });
+                }
+
                 function triggerMuzzleEffect(targetPoint) {
                     const w = WEAPONS[currentWeaponId];
                     if (muzzleFlashLight) {
@@ -1166,39 +1231,51 @@ def main():
                     if (now - lastShotTime < w.fireRate) return;
                     if (currentAmmo <= 0) { reload(); return; }
 
-                    lastShotTime = now;
-                    currentAmmo--;
-                    
-                    updateHUD();
+                    if (currentWeaponId === 8) {
+                        if (currentAmmo < 3) return;
+                        for (let i = 0; i < 3; i++) {
+                            setTimeout(() => {
+                                if (!isGameActive || currentAmmo <= 0) return;
+                                currentAmmo--;
+                                executeSingleShot(w, 'vulcan_shot');
+                            }, i * 80);
+                        }
+                        lastShotTime = now;
+                    } else {
+                        lastShotTime = now;
+                        currentAmmo--;
+                        updateHUD();
 
-                    const raycaster = new THREE.Raycaster();
-                    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-                    
-                    const enemyMeshes = enemies.flatMap(e => e.mesh.children);
-                    const intersects = raycaster.intersectObjects(enemyMeshes);
+                        const raycaster = new THREE.Raycaster();
+                        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                        
+                        const enemyMeshes = enemies.flatMap(e => e.mesh.children);
+                        const intersects = raycaster.intersectObjects(enemyMeshes);
 
-                    let targetPoint = camera.position.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
+                        let targetPoint = camera.position.clone().add(raycaster.ray.direction.clone().multiplyScalar(w.range));
 
-                    if (intersects.length > 0 && intersects[0].distance <= w.range) {
-                        targetPoint = intersects[0].point;
-                        const hitMesh = intersects[0].object;
-                        const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh) || e.mesh.children.some(c => c.children && c.children.includes(hitMesh)));
-                        if (enemyObj) {
-                            enemyObj.hp -= w.damage;
-                            updateHUD();
-                            if (enemyObj.hp <= 0) {
-                                scene.remove(enemyObj.mesh);
-                                enemies = enemies.filter(e => e !== enemyObj);
-                                kills++;
-                                money += enemyObj.isBoss ? 1200 : 30;
-                                if (enemyObj.isBoss) bossEnemy = null;
+                        if (intersects.length > 0 && intersects[0].distance <= w.range) {
+                            targetPoint = intersects[0].point;
+                            const hitMesh = intersects[0].object;
+                            const enemyObj = enemies.find(e => e.mesh.children.includes(hitMesh) || e.mesh.children.some(c => c.children && c.children.includes(hitMesh)));
+                            if (enemyObj) {
+                                enemyObj.hp -= w.damage;
                                 updateHUD();
-                                if (enemies.length === 0) endGame(true);
+                                if (enemyObj.hp <= 0) {
+                                    scene.remove(enemyObj.mesh);
+                                    enemies = enemies.filter(e => e !== enemyObj);
+                                    kills++;
+                                    money += enemyObj.isBoss ? 1200 : 30;
+                                    if (enemyObj.isBoss) bossEnemy = null;
+                                    updateHUD();
+                                    if (enemies.length === 0) endGame(true);
+                                }
                             }
                         }
-                    }
 
-                    triggerMuzzleEffect(targetPoint);
+                        triggerMuzzleEffect(targetPoint);
+                    }
+                    updateHUD();
                 }
 
                 function updateHUD() {
@@ -1499,7 +1576,6 @@ def main():
                                             enemyPos.z += dir.z * enemy.speed * delta;
                                         }
 
-                                        // 레이저 주기적 발사
                                         if (time - enemy.lastLaserTime > enemy.laserCooldown) {
                                             enemy.lastLaserTime = time;
                                             spawnDarkLaser(enemyPos, playerPos);
