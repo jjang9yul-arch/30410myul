@@ -32,11 +32,10 @@ def main():
         st.subheader("메인 메뉴")
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
-        **15라운드 & 신규 무기 패치 내역:**
-        - **신규 무기 '불칸(Vulcan)' 추가**: 오딘 대비 강화된 데미지, 강력한 5점사 사격 방식, 60발 탄창[cite: 1]
-        - **최종 보스 '어둠의 검사' 추가 (15 Round)**: Dual Swords / 어둠의 잔상 돌진 / X자 검기 / 검 던지기 순간이동
-        - **어둠의 검사 밸런스 조정**: 이동 속도 하향 조절 및 눈 레이저 발사 패턴 추가
-        - **어둠의 잔상 궤적**: 돌진 경로에 3초간 남아 피해를 주는 어둠의 잔상 장판 생성
+        **15라운드 & 무기 가격 및 보스 밸런스 패치 내역:**
+        - **무기 가격 조정**: 오딘(1,000G), 불칸(1,500G) 가격 인하[cite: 1]
+        - **불칸 무기 스펙**: 탄창 60발, 강력한 5점사 사격 방식, 오딘 대비 1.68배 데미지[cite: 1]
+        - **최종 보스 '어둠의 검사' 너프 (15 Round)**: 검기 및 레이저 공격 데미지 하향 조정
         - **최대 라운드 15R 확장**: 신화급 무기들과 함께 최종 보스에 도전하세요.
         """)
         
@@ -306,15 +305,15 @@ def main():
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ff00ff;">⚡ 오딘 (Odin - Heavy LMG) - [7]</h4>
                         <p style="font-size: 12px; color: #aaa; margin: 2px 0;">초고속 연사 & 압도적 화력 | 탄창: 150발</p>
-                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,500G</p>
-                        <button id="buy-odin-btn" class="buy-btn" onclick="buyWeapon(7)">오딘 구매 (1500G)</button>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,000G (인하)</p>
+                        <button id="buy-odin-btn" class="buy-btn" onclick="buyWeapon(7)">오딘 구매 (1000G)</button>
                     </div>
 
                     <div class="buy-item">
                         <h4 style="margin: 0; color: #ff4500;">🔥 불칸 (Vulcan - 5점사 돌격소총) - [8]</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">데미지 1.2배 상향, 강력한 5점사 | 탄창: 60발</p>
-                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,800G</p>
-                        <button id="buy-vulcan-btn" class="buy-btn" onclick="buyWeapon(8)">불칸 구매 (1800G)</button>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">데미지 상향, 강력한 5점사 | 탄창: 60발[cite: 1]</p>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,500G (인하)</p>
+                        <button id="buy-vulcan-btn" class="buy-btn" onclick="buyWeapon(8)">불칸 구매 (1500G)</button>
                     </div>
 
                     <button onclick="toggleShop()" style="margin-top: 10px; padding: 6px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
@@ -422,8 +421,8 @@ def main():
                     4: { name: '기관총', damage: 12, range: 75, fireRate: 75, magSize: 100, reloadTime: 2800, color: 0xffd700, owned: false, price: 300 },
                     5: { name: '바주카포', damage: 220, range: 110, fireRate: 1400, magSize: 1, reloadTime: 2200, color: 0xff2200, owned: false, price: 600 },
                     6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 },
-                    7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1500 },
-                    8: { name: '불칸', damage: 30.24, range: 95, fireRate: 120, magSize: 60, reloadTime: 1900, color: 0xff4500, owned: false, price: 1800 }
+                    7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1000 },
+                    8: { name: '불칸', damage: 30.24, range: 95, fireRate: 120, magSize: 60, reloadTime: 1900, color: 0xff4500, owned: false, price: 1500 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
@@ -910,7 +909,7 @@ def main():
                     ray.closestPointToPoint(camera.position, closestPoint);
 
                     if (closestPoint.distanceTo(camera.position) < 1.2) {
-                        playerHealth -= 35;
+                        playerHealth -= 20; // 데미지 너프 (기존 35 -> 20)
                         updateHUD();
                         if (playerHealth <= 0) endGame(false);
                     }
@@ -930,7 +929,7 @@ def main():
                     const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
                     scene.add(waveMesh);
 
-                    swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 30 });
+                    swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 18 }); // 데미지 너프 (기존 30 -> 18)
                 }
 
                 function spawnXSwordWave(bossPos, targetPos) {
@@ -953,7 +952,7 @@ def main():
                     const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
                     scene.add(group);
 
-                    xSwordWaves.push({ group: group, dir: dir, speed: 32.0, life: 3.0, damage: 45 });
+                    xSwordWaves.push({ group: group, dir: dir, speed: 32.0, life: 3.0, damage: 25 }); // 데미지 너프 (기존 45 -> 25)
                 }
 
                 function throwDarkSword(bossPos, targetPos) {
@@ -983,7 +982,7 @@ def main():
                     mesh.lookAt(endPos);
                     scene.add(mesh);
 
-                    darkTrails.push({ mesh: mesh, life: 3.0, damage: 35 });
+                    darkTrails.push({ mesh: mesh, life: 3.0, damage: 20 }); // 데미지 너프 (기존 35 -> 20)
                 }
 
                 function createShockwave(pos, maxRadius, damage) {
@@ -1612,7 +1611,7 @@ def main():
                                         enemy.chargeTimer += delta;
 
                                         if (enemyPos.distanceTo(playerPos) < 2.5) {
-                                            playerHealth -= 50;
+                                            playerHealth -= 35; // 돌진 데미지도 소폭 조정
                                             updateHUD();
                                             createDarkTrail(enemy.dashStartPos, enemyPos.clone());
                                             enemy.state = 'walk';
