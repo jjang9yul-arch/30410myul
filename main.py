@@ -34,6 +34,7 @@ def main():
         st.markdown("""
         **15라운드 & 무기 가격 및 보스 밸런스 패치 내역:**
         - **무기 가격 조정**: 오딘(1,000G), 불칸(1,500G) 가격 인하[cite: 1]
+        - **신규 무기 추가**: 3,000G 궁극의 근접 무기 **'플라즈마 칼'** (3타마다 검기 발사!)
         - **불칸 무기 스펙**: 탄창 60발, 강력한 5점사 사격 방식, 오딘 대비 1.68배 데미지[cite: 1]
         - **최종 보스 '어둠의 검사' 너프 (15 Round)**: 검기 및 레이저 공격 데미지 하향 조정
         - **최대 라운드 15R 확장**: 신화급 무기들과 함께 최종 보스에 도전하세요.
@@ -316,6 +317,13 @@ def main():
                         <button id="buy-vulcan-btn" class="buy-btn" onclick="buyWeapon(8)">불칸 구매 (1500G)</button>
                     </div>
 
+                    <div class="buy-item" style="border: 1px solid #ff0033;">
+                        <h4 style="margin: 0; color: #ff0033;">🗡️ 플라즈마 칼 (Plasma Blade) - [9]</h4>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">불칸의 2배 데미지! 3타마다 강력한 검기 발사 | 무한 탄창</p>
+                        <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 3,000G</p>
+                        <button id="buy-blade-btn" class="buy-btn" style="background-color: #ff0033;" onclick="buyWeapon(9)">플라즈마 칼 구매 (3000G)</button>
+                    </div>
+
                     <button onclick="toggleShop()" style="margin-top: 10px; padding: 6px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
                 </div>
                 
@@ -377,6 +385,12 @@ def main():
                         osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.25);
                         gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
                         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    } else if (type === 'slash') {
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                        osc.frequency.linearRampToValueAtTime(120, audioCtx.currentTime + 0.15);
+                        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
                     } else if (type === 'dark_teleport') {
                         osc.type = 'sine';
                         osc.frequency.setValueAtTime(120, audioCtx.currentTime);
@@ -422,13 +436,15 @@ def main():
                     5: { name: '바주카포', damage: 220, range: 110, fireRate: 1400, magSize: 1, reloadTime: 2200, color: 0xff2200, owned: false, price: 600 },
                     6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 },
                     7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1000 },
-                    8: { name: '불칸', damage: 30.24, range: 95, fireRate: 120, magSize: 60, reloadTime: 1900, color: 0xff4500, owned: false, price: 1500 }
+                    8: { name: '불칸', damage: 30.24, range: 95, fireRate: 120, magSize: 60, reloadTime: 1900, color: 0xff4500, owned: false, price: 1500 },
+                    9: { name: '플라즈마 칼', damage: 60.48, range: 6, fireRate: 280, magSize: 999, reloadTime: 0, color: 0xff0033, owned: false, price: 3000 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
                 let isMouseDown = false;
                 let currentWeaponId = 1, currentAmmo = WEAPONS[1].magSize;
                 let isReloading = false, lastShotTime = 0;
+                let bladeSwingCount = 0; // 칼 공격 횟수 카운터 (3타마다 검기)
 
                 let scene, camera, renderer, gunMesh, muzzlePoint, muzzleFlashLight;
                 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isSprinting = false;
@@ -538,13 +554,17 @@ def main():
                     else if (currentWeaponId === 6) { bodyGeo = new THREE.BoxGeometry(0.12, 0.15, 0.75); gunLength = 0.75; }
                     else if (currentWeaponId === 7) { bodyGeo = new THREE.BoxGeometry(0.32, 0.35, 1.25); gunLength = 1.25; }
                     else if (currentWeaponId === 8) { bodyGeo = new THREE.BoxGeometry(0.15, 0.18, 0.8); gunLength = 0.8; }
+                    else if (currentWeaponId === 9) { bodyGeo = new THREE.BoxGeometry(0.08, 0.7, 0.15); gunLength = 0.7; } // 플라즈마 칼 디자인
 
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2 });
+                    const bodyMat = new THREE.MeshStandardMaterial({ color: w.color, metalness: 0.8, roughness: 0.2, emissive: currentWeaponId === 9 ? 0xff0033 : 0x000000, emissiveIntensity: 0.5 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
                     if (currentWeaponId === 5) body.rotation.x = Math.PI / 2;
                     
                     if (currentWeaponId === 7) {
                         body.position.set(0.0, -0.35, -0.6);
+                    } else if (currentWeaponId === 9) {
+                        body.position.set(0.3, -0.25, -0.4);
+                        body.rotation.z = -Math.PI / 6; // 비스듬히 쥔 칼 모양
                     } else {
                         body.position.set(0.25, -0.2, -0.4);
                     }
@@ -553,6 +573,8 @@ def main():
                     muzzlePoint = new THREE.Object3D();
                     if (currentWeaponId === 7) {
                         muzzlePoint.position.set(0.0, -0.35, -0.6 - (gunLength / 2));
+                    } else if (currentWeaponId === 9) {
+                        muzzlePoint.position.set(0.3, -0.25, -0.6);
                     } else {
                         muzzlePoint.position.set(0.25, -0.2, -0.4 - (gunLength / 2));
                     }
@@ -889,27 +911,22 @@ def main():
 
                 function spawnDarkLaser(bossPos, targetPos) {
                     playSound('laser');
-                    
                     const startPos = bossPos.clone().add(new THREE.Vector3(0, 4.6, 0)); 
                     const dist = startPos.distanceTo(targetPos);
-                    
                     const geom = new THREE.CylinderGeometry(0.12, 0.12, dist, 8);
                     geom.rotateX(Math.PI / 2);
                     const mat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0.95 });
                     const laserMesh = new THREE.Mesh(geom, mat);
-                    
                     laserMesh.position.copy(startPos).add(targetPos).multiplyScalar(0.5);
                     laserMesh.lookAt(targetPos);
                     scene.add(laserMesh);
-
                     visualEffects.push({ mesh: laserMesh, life: 0.2 });
 
                     const ray = new THREE.Ray(startPos, new THREE.Vector3().subVectors(targetPos, startPos).normalize());
                     const closestPoint = new THREE.Vector3();
                     ray.closestPointToPoint(camera.position, closestPoint);
-
                     if (closestPoint.distanceTo(camera.position) < 1.2) {
-                        playerHealth -= 20; // 데미지 너프 (기존 35 -> 20)
+                        playerHealth -= 20;
                         updateHUD();
                         if (playerHealth <= 0) endGame(false);
                     }
@@ -928,8 +945,24 @@ def main():
 
                     const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
                     scene.add(waveMesh);
+                    swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 18 });
+                }
 
-                    swordWaves.push({ mesh: waveMesh, dir: dir, speed: 28.0, life: 3.0, damage: 18 }); // 데미지 너프 (기존 30 -> 18)
+                function spawnPlayerSwordWave(startPos, targetPos) {
+                    playSound('sword_wave');
+                    const waveGeo = new THREE.TorusGeometry(1.5, 0.18, 8, 24, Math.PI);
+                    const waveMat = new THREE.MeshBasicMaterial({ color: 0xff0033, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                    const waveMesh = new THREE.Mesh(waveGeo, waveMat);
+
+                    waveMesh.position.copy(startPos);
+                    waveMesh.lookAt(targetPos);
+                    waveMesh.rotation.z += Math.PI / 2;
+
+                    const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
+                    scene.add(waveMesh);
+
+                    // 검기 데미지는 휘두르는거(약 60)의 3분의 1인 약 20 데미지
+                    swordWaves.push({ mesh: waveMesh, dir: dir, speed: 35.0, life: 2.5, damage: 20, isPlayerWave: true });
                 }
 
                 function spawnXSwordWave(bossPos, targetPos) {
@@ -951,8 +984,7 @@ def main():
 
                     const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
                     scene.add(group);
-
-                    xSwordWaves.push({ group: group, dir: dir, speed: 32.0, life: 3.0, damage: 25 }); // 데미지 너프 (기존 45 -> 25)
+                    xSwordWaves.push({ group: group, dir: dir, speed: 32.0, life: 3.0, damage: 25 });
                 }
 
                 function throwDarkSword(bossPos, targetPos) {
@@ -967,7 +999,6 @@ def main():
 
                     const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
                     scene.add(mesh);
-
                     thrownSwords.push({ mesh: mesh, dir: dir, targetPos: targetPos.clone(), speed: 38.0, life: 2.0 });
                 }
 
@@ -981,8 +1012,7 @@ def main():
                     mesh.position.set(mid.x, 0.1, mid.z);
                     mesh.lookAt(endPos);
                     scene.add(mesh);
-
-                    darkTrails.push({ mesh: mesh, life: 3.0, damage: 20 }); // 데미지 너프 (기존 35 -> 20)
+                    darkTrails.push({ mesh: mesh, life: 3.0, damage: 20 });
                 }
 
                 function createShockwave(pos, maxRadius, damage) {
@@ -1017,15 +1047,9 @@ def main():
                             const pGeo = new THREE.SphereGeometry(0.6, 12, 12);
                             const pMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.9 });
                             const pMesh = new THREE.Mesh(pGeo, pMat);
-                            
                             pMesh.position.copy(startPos);
                             scene.add(pMesh);
-
-                            breathParticles.push({
-                                mesh: pMesh,
-                                velocity: dir.clone().multiplyScalar(32.0),
-                                life: 2.5
-                            });
+                            breathParticles.push({ mesh: pMesh, velocity: dir.clone().multiplyScalar(32.0), life: 2.5 });
                         }, i * 35);
                     }
                 }
@@ -1037,12 +1061,7 @@ def main():
                     mesh.rotation.x = -Math.PI / 2;
                     mesh.position.set(pos.x, 0.05, pos.z);
                     scene.add(mesh);
-
-                    fireGrounds.push({
-                        mesh: mesh,
-                        life: 5.0,
-                        damage: 15
-                    });
+                    fireGrounds.push({ mesh: mesh, life: 5.0, damage: 15 });
                 }
 
                 function createExplosionEffect(pos) {
@@ -1053,7 +1072,6 @@ def main():
                     mesh.position.copy(pos);
                     mesh.position.y = 1.0;
                     scene.add(mesh);
-
                     explosionEffects.push({ mesh: mesh, scale: 1.0, opacity: 1.0 });
                 }
 
@@ -1067,6 +1085,7 @@ def main():
                     if (e.code === 'KeyL') { buyWeapon(6); return; }
                     if (e.code === 'Digit7') { if (WEAPONS[7].owned) switchWeapon(7); else buyWeapon(7); return; }
                     if (e.code === 'Digit8') { if (WEAPONS[8].owned) switchWeapon(8); else buyWeapon(8); return; }
+                    if (e.code === 'Digit9') { if (WEAPONS[9].owned) switchWeapon(9); else buyWeapon(9); return; }
                     if (isShopOpen) return;
 
                     switch (e.code) {
@@ -1122,12 +1141,14 @@ def main():
                     if (isReloading || currentWeaponId === id) return;
                     currentWeaponId = id;
                     currentAmmo = WEAPONS[id].magSize;
+                    bladeSwingCount = 0;
                     createGunModel();
                     updateHUD();
                 }
 
                 function reload() {
                     const w = WEAPONS[currentWeaponId];
+                    if (currentWeaponId === 9) return; // 칼은 재장전 없음
                     if (isReloading || currentAmmo === w.magSize) return;
                     isReloading = true;
                     document.getElementById('weapon').innerText = `${w.name} (재장전 중...)`;
@@ -1179,12 +1200,14 @@ def main():
 
                     playSound(soundType);
 
-                    const points = [startPos, targetPoint];
-                    const geom = new THREE.BufferGeometry().setFromPoints(points);
-                    const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
-                    const line = new THREE.Line(geom, mat);
-                    scene.add(line);
-                    visualEffects.push({ mesh: line, life: 0.08 });
+                    if (currentWeaponId !== 9) {
+                        const points = [startPos, targetPoint];
+                        const geom = new THREE.BufferGeometry().setFromPoints(points);
+                        const mat = new THREE.LineBasicMaterial({ color: w.color, transparent: true, opacity: 0.8 });
+                        const line = new THREE.Line(geom, mat);
+                        scene.add(line);
+                        visualEffects.push({ mesh: line, life: 0.08 });
+                    }
                 }
 
                 function triggerMuzzleEffect(targetPoint) {
@@ -1211,6 +1234,13 @@ def main():
                     } else if (currentWeaponId === 5) {
                         playSound('bazooka');
                         createExplosionEffect(targetPoint);
+                    } else if (currentWeaponId === 9) {
+                        playSound('slash');
+                        // 칼 휘두르는 동안 칼 Mesh 회전 모션 효과
+                        if (gunMesh) {
+                            gunMesh.rotation.z -= Math.PI / 2;
+                            setTimeout(() => { if (gunMesh) gunMesh.rotation.z += Math.PI / 2; }, 100);
+                        }
                     } else {
                         if (currentWeaponId === 7) playSound('heavy_shot');
                         else playSound('shot');
@@ -1228,7 +1258,7 @@ def main():
                     const now = performance.now();
                     const w = WEAPONS[currentWeaponId];
                     if (now - lastShotTime < w.fireRate) return;
-                    if (currentAmmo <= 0) { reload(); return; }
+                    if (currentAmmo <= 0 && currentWeaponId !== 9) { reload(); return; }
 
                     if (currentWeaponId === 8) {
                         if (currentAmmo < 5) return;
@@ -1242,7 +1272,20 @@ def main():
                         lastShotTime = now;
                     } else {
                         lastShotTime = now;
-                        currentAmmo--;
+                        if (currentWeaponId !== 9) currentAmmo--;
+
+                        if (currentWeaponId === 9) {
+                            bladeSwingCount++;
+                            // 3번째 공격마다 검기 발사
+                            if (bladeSwingCount % 3 === 0) {
+                                const raycaster = new THREE.Raycaster();
+                                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                                const spawnPos = camera.position.clone();
+                                const targetPos = spawnPos.clone().add(raycaster.ray.direction.clone().multiplyScalar(50));
+                                spawnPlayerSwordWave(spawnPos, targetPos);
+                            }
+                        }
+
                         updateHUD();
 
                         const raycaster = new THREE.Raycaster();
@@ -1282,7 +1325,7 @@ def main():
                     document.getElementById('health').innerText = Math.max(0, Math.round(playerHealth));
                     document.getElementById('money').innerText = money;
                     document.getElementById('weapon').innerText = WEAPONS[currentWeaponId].name;
-                    document.getElementById('ammo').innerText = `${currentAmmo} / ${WEAPONS[currentWeaponId].magSize}`;
+                    document.getElementById('ammo').innerText = currentWeaponId === 9 ? '무한' : `${currentAmmo} / ${WEAPONS[currentWeaponId].magSize}`;
                     document.getElementById('kills').innerText = kills;
                     document.getElementById('enemies-left').innerText = enemies.length;
 
@@ -1330,7 +1373,7 @@ def main():
                     prevTime = time;
 
                     if (isGameActive && !isShopOpen) {
-                        if (isMouseDown && (currentWeaponId === 4 || currentWeaponId === 7) && !isReloading) shoot();
+                        if (isMouseDown && (currentWeaponId === 4 || currentWeaponId === 7 || currentWeaponId === 9) && !isReloading) shoot();
 
                         const keyRotateSpeed = 1.8;
                         if (rotateLeft) yaw += keyRotateSpeed * delta;
@@ -1378,18 +1421,40 @@ def main():
                             }
                         }
 
+                        // 플레이어 검기 & 보스 검기 업데이트 공용 처리
                         for (let i = swordWaves.length - 1; i >= 0; i--) {
                             const sw = swordWaves[i];
                             sw.mesh.position.add(sw.dir.clone().multiplyScalar(sw.speed * delta));
                             sw.life -= delta;
 
-                            if (sw.mesh.position.distanceTo(playerPos) < 2.0) {
-                                playerHealth -= sw.damage;
-                                updateHUD();
-                                scene.remove(sw.mesh);
-                                swordWaves.splice(i, 1);
-                                if (playerHealth <= 0) endGame(false);
-                                continue;
+                            if (sw.isPlayerWave) {
+                                // 플레이어의 검기가 적에게 닿았을 때 체크
+                                enemies.forEach(enemy => {
+                                    if (enemy.mesh.position.distanceTo(sw.mesh.position) < 2.0) {
+                                        enemy.hp -= sw.damage;
+                                        updateHUD();
+                                        scene.remove(sw.mesh);
+                                        swordWaves.splice(i, 1);
+                                        if (enemy.hp <= 0) {
+                                            scene.remove(enemy.mesh);
+                                            enemies = enemies.filter(e => e !== enemy);
+                                            kills++;
+                                            money += enemy.isBoss ? 1200 : 30;
+                                            if (enemy.isBoss) bossEnemy = null;
+                                            updateHUD();
+                                            if (enemies.length === 0) endGame(true);
+                                        }
+                                    }
+                                });
+                            } else {
+                                if (sw.mesh.position.distanceTo(playerPos) < 2.0) {
+                                    playerHealth -= sw.damage;
+                                    updateHUD();
+                                    scene.remove(sw.mesh);
+                                    swordWaves.splice(i, 1);
+                                    if (playerHealth <= 0) endGame(false);
+                                    continue;
+                                }
                             }
 
                             if (sw.life <= 0) {
@@ -1611,7 +1676,7 @@ def main():
                                         enemy.chargeTimer += delta;
 
                                         if (enemyPos.distanceTo(playerPos) < 2.5) {
-                                            playerHealth -= 35; // 돌진 데미지도 소폭 조정
+                                            playerHealth -= 35;
                                             updateHUD();
                                             createDarkTrail(enemy.dashStartPos, enemyPos.clone());
                                             enemy.state = 'walk';
