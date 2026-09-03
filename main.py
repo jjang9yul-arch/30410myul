@@ -33,7 +33,7 @@ def main():
         st.write("1인칭 전술 슈팅 웹게임입니다.")
         st.markdown("""
         **15라운드 & 신규 무기 패치 내역:**
-        - **신규 무기 '불칸(Vulcan)' 추가**: 오딘 대비 1.4배 데미지, 강력한 3점사 사격 방식, 30발 탄창[cite: 1]
+        - **신규 무기 '불칸(Vulcan)' 추가**: 오딘 대비 강화된 데미지, 강력한 5점사 사격 방식, 60발 탄창[cite: 1]
         - **최종 보스 '어둠의 검사' 추가 (15 Round)**: Dual Swords / 어둠의 잔상 돌진 / X자 검기 / 검 던지기 순간이동
         - **어둠의 검사 밸런스 조정**: 이동 속도 하향 조절 및 눈 레이저 발사 패턴 추가
         - **어둠의 잔상 궤적**: 돌진 경로에 3초간 남아 피해를 주는 어둠의 잔상 장판 생성
@@ -311,8 +311,8 @@ def main():
                     </div>
 
                     <div class="buy-item">
-                        <h4 style="margin: 0; color: #ff4500;">🔥 불칸 (Vulcan - 3점사 돌격소총) - [8]</h4>
-                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">오딘 대비 1.4배 데미지, 강력한 3점사 | 탄창: 30발</p>
+                        <h4 style="margin: 0; color: #ff4500;">🔥 불칸 (Vulcan - 5점사 돌격소총) - [8]</h4>
+                        <p style="font-size: 12px; color: #aaa; margin: 2px 0;">데미지 1.2배 상향, 강력한 5점사 | 탄창: 60발</p>
                         <p style="font-size: 14px; color: #ffd700; margin: 2px 0;">가격: 1,800G</p>
                         <button id="buy-vulcan-btn" class="buy-btn" onclick="buyWeapon(8)">불칸 구매 (1800G)</button>
                     </div>
@@ -423,7 +423,7 @@ def main():
                     5: { name: '바주카포', damage: 220, range: 110, fireRate: 1400, magSize: 1, reloadTime: 2200, color: 0xff2200, owned: false, price: 600 },
                     6: { name: '레이저총', damage: 65, range: 130, fireRate: 130, magSize: 15, reloadTime: 1600, color: 0x00f0ff, owned: false, price: 1200 },
                     7: { name: '오딘', damage: 18, range: 90, fireRate: 50, magSize: 150, reloadTime: 3200, color: 0xff00ff, owned: false, price: 1500 },
-                    8: { name: '불칸', damage: 25, range: 95, fireRate: 120, magSize: 30, reloadTime: 1900, color: 0xff4500, owned: false, price: 1800 }
+                    8: { name: '불칸', damage: 30.24, range: 95, fireRate: 120, magSize: 60, reloadTime: 1900, color: 0xff4500, owned: false, price: 1800 }
                 };
 
                 let round = 1, kills = 0, money = 0, playerHealth = 150, maxPlayerHealth = 150;
@@ -1232,13 +1232,13 @@ def main():
                     if (currentAmmo <= 0) { reload(); return; }
 
                     if (currentWeaponId === 8) {
-                        if (currentAmmo < 3) return;
-                        for (let i = 0; i < 3; i++) {
+                        if (currentAmmo < 5) return;
+                        for (let i = 0; i < 5; i++) {
                             setTimeout(() => {
                                 if (!isGameActive || currentAmmo <= 0) return;
                                 currentAmmo--;
                                 executeSingleShot(w, 'vulcan_shot');
-                            }, i * 80);
+                            }, i * 70);
                         }
                         lastShotTime = now;
                     } else {
